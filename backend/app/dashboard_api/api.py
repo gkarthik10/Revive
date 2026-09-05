@@ -66,6 +66,7 @@ from zoneinfo import ZoneInfo
 from io import BytesIO
 from typing import Any
 import json
+import logging
 import threading
 import os
 import uuid
@@ -121,6 +122,7 @@ from app.payments.razorpay_gateway import (
     live_case_store,
     map_failed_payment_to_case,
     map_captured_payment_to_recovery,
+    map_captured_payment_to_new_case,
     verify_webhook_signature,
 )
 
@@ -335,6 +337,26 @@ def stop_promise_lifecycle_worker() -> None:
 # ============================================================
 # CORS
 # ============================================================
+
+# ============================================================
+# Webhook diagnostics logger
+#
+# Razorpay webhook delivery/signature problems are otherwise
+# invisible: the endpoint only ever returns 200 (ignored) or a
+# bare 400, with nothing server-side to show WHY. This logger
+# writes one line per incoming webhook so `docker compose logs
+# -f backend` (or your terminal, if running uvicorn directly)
+# shows whether Razorpay is reaching this server at all, and if
+# so, why an event was accepted, rejected, or ignored. Never
+# logs the raw signature value or the webhook secret.
+# ============================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+webhook_logger = logging.getLogger("revive.webhook")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -1332,6 +1354,35 @@ def retry_live_case_payment(case_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/api/payments/webhook")
+def webhook_reachability_check() -> dict[str, Any]:
+    """
+    Not called by Razorpay — Razorpay only ever POSTs here.
+
+    This GET exists purely so you can manually confirm the
+    webhook URL is actually reachable from the outside before
+    blaming the application logic. From a device that is NOT
+    on your local network (e.g. your phone on mobile data, or
+    https://reqbin.com), hit:
+
+        GET <your-public-tunnel-url>/api/payments/webhook
+
+    If that does not return this JSON, Razorpay cannot reach
+    your server either, and no amount of code fixing the
+    payment.failed / payment.captured logic will help until
+    the tunnel + Razorpay Dashboard webhook URL are fixed.
+    """
+
+    return {
+        "success": True,
+        "reachable": True,
+        "message": (
+            "This server is reachable at this URL. Razorpay "
+            "webhooks POST to this same path."
+        ),
+    }
+
+
 @app.post("/api/payments/webhook")
 async def razorpay_webhook(
     request: Request,
@@ -1370,6 +1421,21 @@ async def razorpay_webhook(
     )
 
     # --------------------------------------------------------
+    # DIAGNOSTIC LOG — proves the request physically arrived,
+    # before any verification/parsing can reject it. If you never
+    # see this line in the server logs when you trigger a test
+    # payment, Razorpay is not reaching this server at all — that
+    # is a tunnel/URL/webhook-registration problem, not a bug in
+    # this handler.
+    # --------------------------------------------------------
+
+    webhook_logger.info(
+        "Incoming webhook: %d bytes, signature header %s",
+        len(raw_body),
+        "present" if signature else "MISSING",
+    )
+
+    # --------------------------------------------------------
     # SECURITY
     # --------------------------------------------------------
 
@@ -1377,6 +1443,13 @@ async def razorpay_webhook(
         raw_body,
         signature,
     ):
+        webhook_logger.warning(
+            "Rejected webhook: signature missing or did not "
+            "match RAZORPAY_WEBHOOK_SECRET. Confirm the secret "
+            "in .env is the WEBHOOK secret shown in Razorpay "
+            "Dashboard -> Settings -> Webhooks (NOT the API "
+            "key secret), and that it matches exactly."
+        )
         raise HTTPException(
             status_code=400,
             detail="Invalid or missing webhook signature.",
@@ -1392,6 +1465,9 @@ async def razorpay_webhook(
         )
 
     except json.JSONDecodeError:
+        webhook_logger.warning(
+            "Rejected webhook: body was not valid JSON."
+        )
         raise HTTPException(
             status_code=400,
             detail="Invalid JSON body.",
@@ -1399,6 +1475,11 @@ async def razorpay_webhook(
 
     event_name = event_payload.get(
         "event"
+    )
+
+    webhook_logger.info(
+        "Webhook signature OK. event=%s",
+        event_name,
     )
 
     # ========================================================
@@ -1412,6 +1493,13 @@ async def razorpay_webhook(
         )
 
         if case is None:
+            webhook_logger.warning(
+                "payment.failed ignored: no payment entity, no "
+                "payment id, or notes were unreadable. Check "
+                "that the payment link was created via "
+                "create_payment_link() (which attaches the "
+                "revive_case_tag / notes this handler expects)."
+            )
             return {
                 "success": True,
                 "ignored": True,
@@ -1420,6 +1508,14 @@ async def razorpay_webhook(
 
         added = live_case_store.add(
             case
+        )
+
+        webhook_logger.info(
+            "payment.failed processed: case_id=%s newly_added=%s "
+            "-> wrote to %s",
+            case["case_id"],
+            added,
+            live_case_store.path,
         )
 
         return {
@@ -1882,13 +1978,51 @@ async def razorpay_webhook(
 
         if updated is None:
 
+            # ------------------------------------------------
+            # No existing live failure carries this tag, which
+            # means this payment succeeded on its FIRST attempt
+            # (it never went through payment.failed). There is
+            # nothing to "mark recovered" — instead, create the
+            # live case directly, already RECOVERED, so it still
+            # shows up on the dashboard.
+            # ------------------------------------------------
+
+            new_case = map_captured_payment_to_new_case(
+                event_payload
+            )
+
+            if new_case is None:
+
+                return {
+                    "success": True,
+                    "ignored": True,
+                    "event": event_name,
+                    "reason": (
+                        "No matching live Revive failure "
+                        "was found."
+                    ),
+                }
+
+            added = live_case_store.add(
+                new_case
+            )
+
+            _cached_result = None
+
             return {
                 "success": True,
-                "ignored": True,
+                "ignored": False,
                 "event": event_name,
+                "case_id": new_case["case_id"],
+                "newly_added": added,
+                "outcome": new_case["outcome"],
+                "recovered_amount": new_case[
+                    "recovered_amount"
+                ],
                 "reason": (
-                    "No matching live Revive failure "
-                    "was found."
+                    "No prior failure existed for this "
+                    "payment; created a new recovered "
+                    "live case directly."
                 ),
             }
 
@@ -1920,6 +2054,13 @@ async def razorpay_webhook(
     # ========================================================
     # OTHER VALID RAZORPAY EVENTS
     # ========================================================
+
+    webhook_logger.info(
+        "Webhook event '%s' received but not handled (only "
+        "payment.failed / payment.captured trigger Revive "
+        "logic) — ignored by design.",
+        event_name,
+    )
 
     return {
         "success": True,

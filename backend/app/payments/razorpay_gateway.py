@@ -842,6 +842,237 @@ def map_captured_payment_to_recovery(
     }
 
 
+def map_captured_payment_to_new_case(
+    event_payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    """
+    Build a brand-new, already-RECOVERED live case directly from a
+    payment.captured webhook.
+
+    WHY THIS EXISTS:
+
+    mark_recovered() (used by map_captured_payment_to_recovery's
+    caller) can only ever UPDATE a case that already exists in the
+    live case store, matched by revive_case_tag. That case is only
+    ever created on a prior payment.failed event.
+
+    A payment that succeeds on its FIRST attempt never went through
+    payment.failed, so there is no existing case to attach the
+    recovery to. Without this function, that capture is silently
+    dropped ("ignored": true) and never appears on the dashboard,
+    even though the payment genuinely succeeded.
+
+    This function builds that missing case directly, already marked
+    RECOVERED, using the same Revive metadata (notes) that
+    create_payment_link() attaches at checkout time. Only payments
+    carrying a revive_case_tag are considered — a normal Razorpay
+    payment with no Revive metadata returns None and is ignored, same
+    as map_captured_payment_to_recovery.
+    """
+
+    payment = (
+        event_payload
+        .get("payload", {})
+        .get("payment", {})
+        .get("entity", {})
+    )
+
+    if not payment:
+        return None
+
+    payment_id = payment.get("id")
+
+    if not payment_id:
+        return None
+
+    notes = payment.get("notes") or {}
+
+    if not isinstance(notes, dict):
+        notes = {}
+
+    revive_case_tag = (
+        notes.get("revive_case_tag")
+        or ""
+    )
+
+    if not revive_case_tag:
+        return None
+
+    customer_id = (
+        notes.get("revive_customer_id")
+        or "cust_live_unknown"
+    )
+
+    customer_name = (
+        notes.get("revive_customer_name")
+        or "Live Checkout Customer"
+    )
+
+    customer_email = (
+        notes.get("revive_customer_email")
+        or payment.get("email")
+        or None
+    )
+
+    customer_contact = (
+        notes.get("revive_customer_contact")
+        or payment.get("contact")
+        or None
+    )
+
+    surface = str(
+        notes.get("revive_surface")
+        or "subscription_failure"
+    )
+
+    invoice_id_raw = notes.get(
+        "revive_invoice_id"
+    )
+
+    invoice_id = (
+        str(invoice_id_raw)
+        if invoice_id_raw
+        else None
+    )
+
+    has_ap_agent = (
+        str(
+            notes.get(
+                "revive_has_ap_agent",
+                "false",
+            )
+        ).strip().lower()
+        == "true"
+    )
+
+    disputed = (
+        str(
+            notes.get(
+                "revive_disputed",
+                "false",
+            )
+        ).strip().lower()
+        == "true"
+    )
+
+    amount_rupees = round(
+        float(payment.get("amount") or 0) / 100,
+        2,
+    )
+
+    card = payment.get("card") or {}
+
+    payment_method = (
+        payment.get("method")
+        or "unknown"
+    )
+
+    bank = (
+        payment.get("bank")
+        or payment.get("wallet")
+        or "unknown"
+    )
+
+    card_network = (
+        card.get("network")
+        if isinstance(card, dict) and card
+        else payment_method
+    )
+
+    case_id = f"RV-LIVE-{payment_id}"
+
+    now_iso = datetime.now(
+        ZoneInfo("Asia/Kolkata")
+    ).isoformat()
+
+    return {
+        "case_id": case_id,
+
+        "surface": surface,
+
+        "invoice_id": invoice_id,
+
+        "has_ap_agent": has_ap_agent,
+
+        "disputed": disputed,
+
+        "customer_id": str(customer_id),
+
+        "customer_name": str(customer_name),
+
+        "customer_email": (
+            str(customer_email)
+            if customer_email
+            else None
+        ),
+
+        "customer_contact": (
+            str(customer_contact)
+            if customer_contact
+            else None
+        ),
+
+        "amount": amount_rupees,
+
+        "timestamp": now_iso,
+
+        "razorpay_created_at": payment.get(
+            "created_at"
+        ),
+
+        "root_cause_label": None,
+
+        "decline_code": None,
+
+        "bank": bank,
+
+        "card_network": card_network,
+
+        "payment_method": payment_method,
+
+        "customer_tenure_days": None,
+
+        "retry_count": 0,
+
+        # ----------------------------------------------------
+        # LIVE RECOVERY STATE
+        #
+        # Created directly as RECOVERED: this case represents a
+        # payment that succeeded on its first attempt, so there
+        # was never an UNRECOVERED/PENDING_RECOVERY stage to pass
+        # through.
+        # ----------------------------------------------------
+
+        "outcome": "RECOVERED",
+
+        "recovery_status": "RECOVERED",
+
+        "recovered_amount": amount_rupees,
+
+        "recovery_source": "razorpay_payment_captured",
+
+        "recovered_at": now_iso,
+
+        "updated_at": now_iso,
+
+        # ----------------------------------------------------
+        # Provenance
+        # ----------------------------------------------------
+
+        "source": "razorpay_live_webhook_direct_capture",
+
+        "is_live": True,
+
+        "razorpay_payment_id": payment_id,
+
+        "recovery_payment_id": payment_id,
+
+        "revive_case_tag": revive_case_tag,
+
+        "razorpay_raw_error": None,
+    }
+
+
 # ============================================================
 # Live Case Store
 # ============================================================
