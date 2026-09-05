@@ -1355,6 +1355,7 @@ def retry_live_case_payment(case_id: str) -> dict[str, Any]:
 
 
 @app.get("/api/payments/webhook")
+@app.get("/webhook")
 def webhook_reachability_check() -> dict[str, Any]:
     """
     Not called by Razorpay — Razorpay only ever POSTs here.
@@ -1363,14 +1364,15 @@ def webhook_reachability_check() -> dict[str, Any]:
     webhook URL is actually reachable from the outside before
     blaming the application logic. From a device that is NOT
     on your local network (e.g. your phone on mobile data, or
-    https://reqbin.com), hit:
+    https://reqbin.com), hit BOTH of:
 
         GET <your-public-tunnel-url>/api/payments/webhook
+        GET <your-public-tunnel-url>/webhook
 
-    If that does not return this JSON, Razorpay cannot reach
-    your server either, and no amount of code fixing the
+    If neither returns this JSON, Razorpay cannot reach your
+    server either, and no amount of code fixing the
     payment.failed / payment.captured logic will help until
-    the tunnel + Razorpay Dashboard webhook URL are fixed.
+    the tunnel itself is confirmed live.
     """
 
     return {
@@ -1378,12 +1380,34 @@ def webhook_reachability_check() -> dict[str, Any]:
         "reachable": True,
         "message": (
             "This server is reachable at this URL. Razorpay "
-            "webhooks POST to this same path."
+            "webhooks POST to this same path (and to "
+            "/api/payments/webhook, which now both resolve to "
+            "the same handler)."
         ),
     }
 
 
 @app.post("/api/payments/webhook")
+@app.post("/webhook")
+# ------------------------------------------------------------
+# ALIAS ROUTE: "/webhook"
+#
+# Server logs showed real incoming traffic hitting POST /webhook
+# and getting a bare 404 — meaning whatever is configured as the
+# webhook URL on Razorpay's side (or the tunnel/proxy in front of
+# this server) is pointed at "/webhook", not "/api/payments/webhook".
+# That 404 happens BEFORE this function ever runs, which is why
+# payment.failed, payment.captured, and every downstream feature
+# that depends on them (live cases, Promise-to-Pay verification,
+# A2A settlement confirmation) all silently do nothing — none of
+# them are broken; they simply never get called.
+#
+# This alias makes the exact same handler answer at both paths, so
+# it works regardless of which URL is actually registered. This is
+# a safety net, not a substitute for fixing the URL registered in
+# Razorpay Dashboard -> Settings -> Webhooks to the canonical
+# "/api/payments/webhook" path documented in the README.
+# ------------------------------------------------------------
 async def razorpay_webhook(
     request: Request,
 ) -> dict[str, Any]:
@@ -2263,12 +2287,29 @@ def _find_pipeline_case(
     case_id: str,
 ) -> dict[str, Any] | None:
     """
-    Find the authoritative synthetic case without mutating it.
+    Find the authoritative case — synthetic OR live — without
+    mutating it.
+
+    BUG FIX: this previously only searched the synthetic 105-case
+    pipeline benchmark. A live case captured from a real Razorpay
+    payment.failed webhook (case_id format "RV-LIVE-<payment_id>")
+    lives in live_case_store, not the synthetic pipeline, so
+    Promise-to-Pay creation always 404'd for real failed payments
+    ("No case found with case_id RV-LIVE-...") even though the case
+    genuinely existed and was visible on the Live Payments panel.
+
+    Synthetic cases are checked first since that is the overwhelmingly
+    common path; live cases are checked as a fallback.
     """
 
     result = get_pipeline()
 
     for case in _cases(result):
+
+        if case.get("case_id") == case_id:
+            return case
+
+    for case in live_case_store.load():
 
         if case.get("case_id") == case_id:
             return case
