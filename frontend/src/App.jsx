@@ -945,7 +945,19 @@ function App() {
       if (showLoading) {
         const elapsed = performance.now() - launchStartedAt;
         const minimumLaunchTime = 2400;
-        const remaining = Math.max(0, minimumLaunchTime - elapsed);
+        const counterAnimationDuration = 1800;
+
+        // Wait for whichever is longer: the minimum splash time
+        // measured from fetch start, or the full counter animation
+        // measured from when the data actually arrived. This
+        // guarantees the recovered-revenue counter always finishes
+        // counting up before the loading screen unmounts, even on
+        // a slow network where the fetch itself eats into the
+        // minimum launch window.
+        const remaining = Math.max(
+          minimumLaunchTime - elapsed,
+          counterAnimationDuration,
+        );
 
         window.setTimeout(() => {
           setLoading(false);
