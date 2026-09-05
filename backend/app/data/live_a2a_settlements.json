@@ -1,0 +1,40 @@
+[
+  {
+    "agreement_id": "8a6d355fece526a0a5a46b46669858b2818cb481f4f19f4edc070157701f5b1c",
+    "case_id": "RV-LIVE-A2A-SAFETY",
+    "invoice_id": "INV-RV-LIVE-A2A-SAFETY",
+    "revive_case_tag": "revive-a2a-safety",
+    "payer_agent_id": "payer-ap-agent-demo-001",
+    "agreed_amount": 10000.0,
+    "settlement_status": "AGREED",
+    "payment_status": "CONFIRMED",
+    "recovery_confirmed": true,
+    "payment_link_id": null,
+    "payment_url": null,
+    "razorpay_payment_id": "pay_a2a_safety_full_001",
+    "created_at": "2026-09-03T09:01:10.915765+00:00",
+    "updated_at": "2026-09-03T14:34:00.950769+05:30",
+    "confirmed_at": "2026-09-03T14:34:00.950769+05:30",
+    "a2a_task_id": null,
+    "a2a_context_id": null
+  },
+  {
+    "agreement_id": "c05cbad96953f5afd3a2e63e354a941f50e46759ee468025a1b153572e49c600",
+    "case_id": "RV-LIVE-A2A-FINAL",
+    "invoice_id": "INV-A2A-FINAL-001",
+    "revive_case_tag": "revive-a2a-final",
+    "payer_agent_id": "payer-ap-agent-demo-001",
+    "agreed_amount": 10000.0,
+    "settlement_status": "AGREED",
+    "payment_status": "PENDING",
+    "recovery_confirmed": false,
+    "payment_link_id": null,
+    "payment_url": null,
+    "razorpay_payment_id": null,
+    "created_at": "2026-09-03T09:38:10.117972+00:00",
+    "updated_at": "2026-09-03T09:38:10.117972+00:00",
+    "confirmed_at": null,
+    "a2a_task_id": null,
+    "a2a_context_id": null
+  }
+]

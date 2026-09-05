@@ -1,0 +1,182 @@
+# ============================================================
+# REVIVE POLICY CONFIGURATION
+# ============================================================
+#
+# Business rules belong here.
+# Do not hardcode merchant policy limits in Python.
+#
+# All monetary values are INR.
+# Contact times use Asia/Kolkata (IST).
+# ============================================================
+
+# ------------------------------------------------------------
+# Contact limits
+# ------------------------------------------------------------
+
+max_contact_attempts: 3
+
+cooldown_hours: 24
+
+# ------------------------------------------------------------
+# Contact window
+# ------------------------------------------------------------
+
+contact_window:
+  timezone: "Asia/Kolkata"
+
+  start: "09:00"
+
+  end: "20:00"
+
+# ------------------------------------------------------------
+# Negotiation limits
+# ------------------------------------------------------------
+
+max_discount_percent: 10
+
+max_negotiation_rounds: 4
+
+# ------------------------------------------------------------
+# Hard-stop conditions
+# ------------------------------------------------------------
+
+hard_stops:
+  promise_to_pay: true
+
+  disputed_invoice: true
+
+  customer_opted_out: true
+
+# ------------------------------------------------------------
+# Channel costs
+#
+# Used later by Module 6 — ROI Engine.
+# ------------------------------------------------------------
+
+channel_cost_inr:
+  whatsapp: 2.0
+
+  email: 0.5
+
+  voice_call: 15.0
+
+  payment_retry: 3.0
+
+  human_escalation: 50.0
+
+# ------------------------------------------------------------
+# Baseline recovery probabilities
+#
+# These are priors, not fabricated final results.
+# Module 6 will adjust probability based on:
+#
+#   root cause
+#   attempt number
+#   channel history
+#
+# ------------------------------------------------------------
+
+channel_success_prior:
+  whatsapp: 0.35
+
+  email: 0.20
+
+  voice_call: 0.40
+
+  payment_retry: 0.45
+
+  human_escalation: 0.60
+
+# ------------------------------------------------------------
+# Retry rules
+# ------------------------------------------------------------
+
+retry:
+  max_attempts: 3
+
+  minimum_cooldown_hours: 6
+
+# ------------------------------------------------------------
+# Mandate retry rules (UPI Autopay / eNACH recurring debits)
+#
+# Distinct from the generic `retry` block above: mandate debits
+# follow their own real-world cadence — a pre-debit notice must
+# go out before each attempt, attempts are capped per billing
+# cycle, and the spacing between attempts is wider than a card
+# retry. Used by app/mandate_sequencer/sequencer.py.
+# ------------------------------------------------------------
+
+mandate_retry:
+  max_attempts_per_cycle: 3
+
+  minimum_gap_hours: 24
+
+  predebit_notice_hours: 24
+
+  billing_cycle_days: 30
+
+  escalation_action: "mandate_reauthorization_request"
+
+# ------------------------------------------------------------
+# Escalation rules
+# ------------------------------------------------------------
+
+escalation:
+  enabled: true
+
+  high_value_threshold_inr: 50000
+
+# ------------------------------------------------------------
+# Audit requirements
+# ------------------------------------------------------------
+
+audit:
+  record_blocked_actions: true
+
+  record_allowed_actions: true
+
+  record_policy_checks: true
+
+# ------------------------------------------------------------
+# ROI / Expected-Value Rules
+#
+# Used by Module 6 — ROI Portfolio Engine.
+#
+# These are transparent business priors used to estimate
+# recovery probability. They are NOT measured recovery results.
+# ------------------------------------------------------------
+
+roi_attempt_decay: 0.65
+
+# Root-cause multiplier applied to the channel success prior.
+#
+# > 1.0  = root cause is relatively recoverable
+# < 1.0  = root cause is harder to recover
+#
+# Keep these values configurable so they can later be learned
+# from historical outcomes.
+
+root_cause_success_multiplier:
+  insufficient_funds: 1.15
+
+  otp_timeout: 1.10
+
+  issuer_declined: 0.85
+
+  card_expired: 1.05
+
+  mandate_expired_or_revoked: 0.95
+
+  mandate_debit_failed: 1.05
+
+  network_error: 1.00
+
+  invoice_dispute: 0.45
+
+  b2b_cashflow_delay: 0.90
+
+  payment_approval_delay: 0.95
+
+  administrative_delay: 0.85
+
+  checkout_abandonment: 0.90

@@ -1,0 +1,20 @@
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Revive global viewport reset */
+html {
+  min-width: 320px;
+  background: var(--bg, #050505);
+}
+
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+}

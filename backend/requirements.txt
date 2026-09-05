@@ -1,0 +1,25 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pyyaml>=6.0
+python-dotenv>=1.0
+
+# Auth (app/auth/) — JWT sessions + email validation for register/login.
+# Password hashing itself uses stdlib hashlib (no extra dependency).
+pyjwt>=2.8
+email-validator>=2.1
+# Required for the live Razorpay integration:
+#   - app/payments/razorpay_gateway.py (POST /api/payments/checkout,
+#     POST /api/payments/webhook)
+#   - app/data/razorpay_live_capture.py, the one-off manual capture
+#     script
+# Not required for the core pipeline, dashboard, or self-tests —
+# everything else runs fine without it.
+requests>=2.31
+
+# Optional: only needed if you set ANTHROPIC_API_KEY to use the real
+# LLM fallback in the diagnosis module. Everything runs without it —
+# a transparent heuristic fallback kicks in automatically.
+anthropic>=0.34
+openai>=1.40
+reportlab
+groq

@@ -1,0 +1,106 @@
+amount,bank,card_network,case_id,comment_notes,customer_id,customer_name,customer_tenure_days,days_overdue,decline_code,device,due_date,has_ap_agent,payment_attempted,payment_method,payment_method_selected,retry_count,root_cause_label,surface,time_to_abandon_seconds,timestamp
+10012,HDFC,VISA,RV-00001,,CUST-004,Ananya,280,,issuer_declined,,,,,credit_card,,0,issuer_declined,subscription_failure,,2026-08-26T05:03:00
+18870,HDFC,VISA,RV-00002,,CUST-005,Vikram,119,,issuer_declined,,,,,credit_card,,2,issuer_declined,subscription_failure,,2026-08-26T05:13:00
+1976,HDFC,VISA,RV-00003,,CUST-014,Nisha,125,,issuer_declined,,,,,credit_card,,0,issuer_declined,subscription_failure,,2026-08-26T05:04:00
+1869,HDFC,VISA,RV-00004,,CUST-008,Meera,604,,issuer_declined,,,,,credit_card,,0,issuer_declined,subscription_failure,,2026-08-26T06:04:00
+8223,HDFC,VISA,RV-00005,,CUST-018,Pooja,489,,issuer_declined,,,,,credit_card,,2,issuer_declined,subscription_failure,,2026-08-26T05:53:00
+6231,HDFC,VISA,RV-00006,,CUST-009,Rohan,744,,issuer_declined,,,,,credit_card,,1,issuer_declined,subscription_failure,,2026-08-26T05:00:00
+6094,HDFC,VISA,RV-00007,,CUST-011,Aditya,250,,issuer_declined,,,,,credit_card,,1,issuer_declined,subscription_failure,,2026-08-26T05:35:00
+13449,HDFC,VISA,RV-00008,,CUST-004,Ananya,129,,issuer_declined,,,,,credit_card,,1,issuer_declined,subscription_failure,,2026-08-26T05:11:00
+9667,HDFC,VISA,RV-00009,,CUST-012,Ishita,856,,issuer_declined,,,,,credit_card,,0,issuer_declined,subscription_failure,,2026-08-26T06:17:00
+5090,HDFC,VISA,RV-00010,,CUST-015,Sanjay,417,,issuer_declined,,,,,credit_card,,0,issuer_declined,subscription_failure,,2026-08-26T06:08:00
+12850,HDFC,VISA,RV-00011,,CUST-018,Pooja,621,,issuer_declined,,,,,credit_card,,0,issuer_declined,subscription_failure,,2026-08-26T05:37:00
+8467,HDFC,VISA,RV-00012,,CUST-003,Rahul,821,,issuer_declined,,,,,credit_card,,1,issuer_declined,subscription_failure,,2026-08-26T05:05:00
+4309,HDFC,VISA,RV-00013,,CUST-003,Rahul,419,,issuer_declined,,,,,credit_card,,1,issuer_declined,subscription_failure,,2026-08-26T05:29:00
+12954,HDFC,VISA,RV-00014,,CUST-015,Sanjay,196,,issuer_declined,,,,,credit_card,,1,issuer_declined,subscription_failure,,2026-08-26T06:21:00
+21306,SBI,RUPAY,RV-00015,,CUST-012,Ishita,1108,,otp_timeout,,,,,upi,,1,otp_timeout,subscription_failure,,2026-08-25T18:38:00
+22933,AXIS,MASTERCARD,RV-00016,,CUST-006,Sneha,129,,card_expired,,,,,credit_card,,1,card_expired,subscription_failure,,2026-08-28T08:14:00
+7413,SBI,MASTERCARD,RV-00017,,CUST-002,Priya,659,,network_error,,,,,debit_card,,1,network_error,subscription_failure,,2026-08-26T19:04:00
+8581,AXIS,VISA,RV-00018,,CUST-016,Divya,1164,,card_expired,,,,,debit_card,,2,card_expired,subscription_failure,,2026-08-26T18:08:00
+5032,KOTAK,MASTERCARD,RV-00019,,CUST-019,Varun,1025,,card_expired,,,,,debit_card,,0,card_expired,subscription_failure,,2026-08-27T07:14:00
+22798,HDFC,VISA,RV-00020,,CUST-002,Priya,145,,network_error,,,,,credit_card,,3,network_error,subscription_failure,,2026-08-26T05:50:00
+876,AXIS,RUPAY,RV-00021,,CUST-013,Karan,249,,mandate_expired_or_revoked,,,,,debit_card,,2,mandate_expired_or_revoked,subscription_failure,,2026-08-26T17:35:00
+606,SBI,MASTERCARD,RV-00022,,CUST-011,Aditya,554,,insufficient_funds,,,,,debit_card,,1,insufficient_funds,subscription_failure,,2026-08-26T05:29:00
+7017,SBI,RUPAY,RV-00023,,CUST-017,Manish,780,,insufficient_funds,,,,,upi,,1,insufficient_funds,subscription_failure,,2026-08-28T01:38:00
+1138,KOTAK,VISA,RV-00024,,CUST-018,Pooja,758,,network_error,,,,,upi,,2,network_error,subscription_failure,,2026-08-27T02:31:00
+24483,ICICI,RUPAY,RV-00025,,CUST-008,Meera,156,,insufficient_funds,,,,,credit_card,,1,insufficient_funds,subscription_failure,,2026-08-25T19:05:00
+17790,AXIS,RUPAY,RV-00026,,CUST-005,Vikram,881,,mandate_debit_failed,,,,,debit_card,,1,mandate_debit_failed,subscription_failure,,2026-08-26T06:16:00
+22509,ICICI,RUPAY,RV-00027,,CUST-018,Pooja,779,,network_error,,,,,debit_card,,3,network_error,subscription_failure,,2026-08-27T00:25:00
+11578,HDFC,VISA,RV-00028,,CUST-017,Manish,1149,,card_expired,,,,,upi,,1,card_expired,subscription_failure,,2026-08-26T13:04:00
+2708,HDFC,VISA,RV-00029,,CUST-019,Varun,691,,otp_timeout,,,,,upi,,0,otp_timeout,subscription_failure,,2026-08-25T16:14:00
+18169,SBI,RUPAY,RV-00030,,CUST-017,Manish,1184,,otp_timeout,,,,,upi,,3,otp_timeout,subscription_failure,,2026-08-27T23:13:00
+3676,AXIS,MASTERCARD,RV-00031,,CUST-008,Meera,897,,network_error,,,,,debit_card,,2,network_error,subscription_failure,,2026-08-26T09:06:00
+21912,AXIS,RUPAY,RV-00032,,CUST-014,Nisha,216,,card_expired,,,,,debit_card,,0,card_expired,subscription_failure,,2026-08-25T15:43:00
+6732,SBI,VISA,RV-00033,,CUST-013,Karan,933,,mandate_debit_failed,,,,,debit_card,,1,mandate_debit_failed,subscription_failure,,2026-08-26T16:12:00
+2970,SBI,MASTERCARD,RV-00034,,CUST-014,Nisha,1142,,otp_timeout,,,,,credit_card,,0,otp_timeout,subscription_failure,,2026-08-26T16:55:00
+8245,KOTAK,VISA,RV-00035,,CUST-002,Priya,847,,mandate_debit_failed,,,,,upi,,3,mandate_debit_failed,subscription_failure,,2026-08-25T20:59:00
+570,AXIS,VISA,RV-00036,,CUST-016,Divya,558,,otp_timeout,,,,,credit_card,,3,otp_timeout,subscription_failure,,2026-08-26T06:24:00
+6722,KOTAK,RUPAY,RV-00037,,CUST-010,Kavya,460,,card_expired,,,,,credit_card,,0,card_expired,subscription_failure,,2026-08-27T23:09:00
+2143,KOTAK,VISA,RV-00038,,CUST-019,Varun,991,,mandate_debit_failed,,,,,debit_card,,1,mandate_debit_failed,subscription_failure,,2026-08-27T01:03:00
+2726,HDFC,VISA,RV-00039,,CUST-002,Priya,496,,mandate_expired_or_revoked,,,,,debit_card,,3,mandate_expired_or_revoked,subscription_failure,,2026-08-25T17:38:00
+3186,ICICI,RUPAY,RV-00040,,CUST-004,Ananya,1172,,mandate_expired_or_revoked,,,,,credit_card,,2,mandate_expired_or_revoked,subscription_failure,,2026-08-25T14:39:00
+4788,SBI,VISA,RV-00041,,CUST-009,Rohan,629,,otp_timeout,,,,,debit_card,,3,otp_timeout,subscription_failure,,2026-08-26T18:25:00
+18948,HDFC,VISA,RV-00042,,CUST-011,Aditya,165,,network_error,,,,,upi,,1,network_error,subscription_failure,,2026-08-27T19:39:00
+8504,ICICI,MASTERCARD,RV-00043,,CUST-017,Manish,598,,issuer_declined,,,,,credit_card,,1,issuer_declined,subscription_failure,,2026-08-25T17:56:00
+21929,KOTAK,RUPAY,RV-00044,,CUST-015,Sanjay,31,,network_error,,,,,debit_card,,2,network_error,subscription_failure,,2026-08-26T23:39:00
+18628,SBI,VISA,RV-00045,,CUST-004,Ananya,572,,otp_timeout,,,,,upi,,2,otp_timeout,subscription_failure,,2026-08-25T22:47:00
+23327,,,RV-00046,,CUST-020,Neha,,,,desktop,,,True,,debit_card,,issuer_declined,checkout_abandonment,664,2026-08-27T04:13:00
+21584,,,RV-00047,,CUST-016,Divya,,,,desktop,,,False,,upi,,checkout_abandonment,checkout_abandonment,448,2026-08-25T15:05:00
+9383,,,RV-00048,,CUST-001,Aarav,,,,tablet,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,180,2026-08-26T01:40:00
+4465,,,RV-00049,,CUST-018,Pooja,,,,tablet,,,False,,upi,,checkout_abandonment,checkout_abandonment,92,2026-08-28T08:00:00
+14883,,,RV-00050,,CUST-018,Pooja,,,,mobile,,,True,,credit_card,,network_error,checkout_abandonment,145,2026-08-28T07:09:00
+8976,,,RV-00051,,CUST-012,Ishita,,,,mobile,,,True,,credit_card,,network_error,checkout_abandonment,697,2026-08-26T11:43:00
+8557,,,RV-00052,,CUST-018,Pooja,,,,mobile,,,False,,upi,,checkout_abandonment,checkout_abandonment,900,2026-08-26T04:59:00
+14291,,,RV-00053,,CUST-014,Nisha,,,,tablet,,,True,,debit_card,,otp_timeout,checkout_abandonment,836,2026-08-27T03:50:00
+23779,,,RV-00054,,CUST-008,Meera,,,,desktop,,,False,,upi,,checkout_abandonment,checkout_abandonment,125,2026-08-26T05:50:00
+10800,,,RV-00055,,CUST-016,Divya,,,,mobile,,,True,,upi,,otp_timeout,checkout_abandonment,855,2026-08-27T19:22:00
+29123,,,RV-00056,,CUST-001,Aarav,,,,desktop,,,True,,credit_card,,network_error,checkout_abandonment,86,2026-08-27T03:17:00
+1704,,,RV-00057,,CUST-017,Manish,,,,desktop,,,False,,upi,,checkout_abandonment,checkout_abandonment,133,2026-08-28T05:21:00
+20348,,,RV-00058,,CUST-019,Varun,,,,desktop,,,False,,debit_card,,checkout_abandonment,checkout_abandonment,459,2026-08-25T13:06:00
+13422,,,RV-00059,,CUST-011,Aditya,,,,mobile,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,605,2026-08-28T02:07:00
+27227,,,RV-00060,,CUST-002,Priya,,,,tablet,,,False,,debit_card,,checkout_abandonment,checkout_abandonment,566,2026-08-25T09:33:00
+22565,,,RV-00061,,CUST-007,Arjun,,,,tablet,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,353,2026-08-27T16:04:00
+22652,,,RV-00062,,CUST-004,Ananya,,,,desktop,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,433,2026-08-28T01:19:00
+13223,,,RV-00063,,CUST-010,Kavya,,,,tablet,,,True,,upi,,otp_timeout,checkout_abandonment,708,2026-08-27T14:42:00
+28119,,,RV-00064,,CUST-020,Neha,,,,desktop,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,15,2026-08-27T12:35:00
+15276,,,RV-00065,,CUST-007,Arjun,,,,tablet,,,False,,upi,,checkout_abandonment,checkout_abandonment,467,2026-08-27T02:29:00
+3578,,,RV-00066,,CUST-017,Manish,,,,tablet,,,False,,debit_card,,checkout_abandonment,checkout_abandonment,305,2026-08-26T06:42:00
+25413,,,RV-00067,,CUST-020,Neha,,,,tablet,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,255,2026-08-25T20:52:00
+8823,,,RV-00068,,CUST-008,Meera,,,,tablet,,,True,,upi,,otp_timeout,checkout_abandonment,501,2026-08-25T12:02:00
+23618,,,RV-00069,,CUST-015,Sanjay,,,,desktop,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,408,2026-08-26T09:45:00
+25407,,,RV-00070,,CUST-008,Meera,,,,mobile,,,True,,credit_card,,issuer_declined,checkout_abandonment,896,2026-08-25T09:57:00
+2445,,,RV-00071,,CUST-008,Meera,,,,mobile,,,True,,upi,,issuer_declined,checkout_abandonment,585,2026-08-28T03:29:00
+20311,,,RV-00072,,CUST-015,Sanjay,,,,desktop,,,True,,debit_card,,network_error,checkout_abandonment,339,2026-08-28T04:35:00
+6015,,,RV-00073,,CUST-017,Manish,,,,desktop,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,776,2026-08-28T07:28:00
+26282,,,RV-00074,,CUST-009,Rohan,,,,desktop,,,True,,debit_card,,issuer_declined,checkout_abandonment,548,2026-08-26T20:49:00
+24181,,,RV-00075,,CUST-008,Meera,,,,mobile,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,307,2026-08-27T17:04:00
+5334,,,RV-00076,,CUST-011,Aditya,,,,mobile,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,169,2026-08-28T06:05:00
+11642,,,RV-00077,,CUST-005,Vikram,,,,desktop,,,True,,credit_card,,otp_timeout,checkout_abandonment,570,2026-08-27T14:26:00
+26024,,,RV-00078,,CUST-002,Priya,,,,tablet,,,True,,upi,,network_error,checkout_abandonment,613,2026-08-27T10:57:00
+12326,,,RV-00079,,CUST-019,Varun,,,,desktop,,,False,,credit_card,,checkout_abandonment,checkout_abandonment,320,2026-08-27T22:00:00
+15081,,,RV-00080,,CUST-018,Pooja,,,,mobile,,,True,,credit_card,,network_error,checkout_abandonment,512,2026-08-26T13:17:00
+43456,,,RV-00081,Our accounts team is processing the invoice.,CUST-011,Aditya,,11,,,2026-08-14,True,,,,,administrative_delay,b2b_receivable,,2026-08-27T20:58:00
+237239,,,RV-00082,Our cash flow is tight this month.,CUST-019,Varun,,6,,,2026-08-19,False,,,,,b2b_cashflow_delay,b2b_receivable,,2026-08-27T15:08:00
+129196,,,RV-00083,Our finance approval process is taking longer than expected.,CUST-002,Priya,,25,,,2026-07-31,False,,,,,payment_approval_delay,b2b_receivable,,2026-08-27T02:13:00
+31471,,,RV-00084,The payment is waiting for internal approval.,CUST-013,Karan,,27,,,2026-07-29,False,,,,,payment_approval_delay,b2b_receivable,,2026-08-26T17:53:00
+27987,,,RV-00085,Our cash flow is tight this month.,CUST-018,Pooja,,23,,,2026-08-02,True,,,,,b2b_cashflow_delay,b2b_receivable,,2026-08-26T13:41:00
+43088,,,RV-00086,Please resolve the invoice issue before payment.,CUST-008,Meera,,2,,,2026-08-23,False,,,,,invoice_dispute,b2b_receivable,,2026-08-26T04:15:00
+106703,,,RV-00087,Please resolve the invoice issue before payment.,CUST-004,Ananya,,30,,,2026-07-26,True,,,,,invoice_dispute,b2b_receivable,,2026-08-26T17:49:00
+161698,,,RV-00088,We need additional time before settling the invoice.,CUST-020,Neha,,11,,,2026-08-14,True,,,,,b2b_cashflow_delay,b2b_receivable,,2026-08-27T00:06:00
+165214,,,RV-00089,Payment is delayed due to an administrative issue.,CUST-019,Varun,,26,,,2026-07-30,True,,,,,administrative_delay,b2b_receivable,,2026-08-26T10:04:00
+149655,,,RV-00090,Payment is delayed due to internal cash flow constraints.,CUST-010,Kavya,,37,,,2026-07-19,False,,,,,b2b_cashflow_delay,b2b_receivable,,2026-08-25T14:22:00
+232711,,,RV-00091,We need additional time before settling the invoice.,CUST-012,Ishita,,33,,,2026-07-23,False,,,,,b2b_cashflow_delay,b2b_receivable,,2026-08-27T04:00:00
+50105,,,RV-00092,Payment is delayed due to an administrative issue.,CUST-004,Ananya,,24,,,2026-08-01,False,,,,,administrative_delay,b2b_receivable,,2026-08-27T19:45:00
+136745,,,RV-00093,Our finance approval process is taking longer than expected.,CUST-017,Manish,,40,,,2026-07-16,False,,,,,payment_approval_delay,b2b_receivable,,2026-08-28T05:49:00
+32718,,,RV-00094,Our finance approval process is taking longer than expected.,CUST-019,Varun,,21,,,2026-08-04,False,,,,,payment_approval_delay,b2b_receivable,,2026-08-26T16:53:00
+17523,,,RV-00095,Our accounts team is processing the invoice.,CUST-008,Meera,,37,,,2026-07-19,False,,,,,administrative_delay,b2b_receivable,,2026-08-27T09:21:00
+77725,,,RV-00096,Our accounts team is processing the invoice.,CUST-006,Sneha,,14,,,2026-08-11,False,,,,,administrative_delay,b2b_receivable,,2026-08-27T06:51:00
+60084,,,RV-00097,The payment is waiting for internal approval.,CUST-020,Neha,,36,,,2026-07-20,True,,,,,payment_approval_delay,b2b_receivable,,2026-08-25T10:33:00
+134804,,,RV-00098,Our accounts team is processing the invoice.,CUST-014,Nisha,,36,,,2026-07-20,False,,,,,administrative_delay,b2b_receivable,,2026-08-26T15:44:00
+191347,,,RV-00099,We need additional time before settling the invoice.,CUST-001,Aarav,,19,,,2026-08-06,True,,,,,b2b_cashflow_delay,b2b_receivable,,2026-08-26T13:25:00
+100113,,,RV-00100,The invoice is pending management approval.,CUST-019,Varun,,31,,,2026-07-25,False,,,,,payment_approval_delay,b2b_receivable,,2026-08-28T07:33:00
+90379,,,RV-00101,The payment is waiting for internal approval.,CUST-018,Pooja,,23,,,2026-08-02,False,,,,,payment_approval_delay,b2b_receivable,,2026-08-27T19:17:00
+150473,,,RV-00102,There is a dispute regarding the invoice amount.,CUST-004,Ananya,,21,,,2026-08-04,True,,,,,invoice_dispute,b2b_receivable,,2026-08-26T00:47:00
+84186,,,RV-00103,Payment is delayed due to an administrative issue.,CUST-007,Arjun,,18,,,2026-08-07,True,,,,,administrative_delay,b2b_receivable,,2026-08-28T04:38:00
+13708,,,RV-00104,Our finance team has raised an invoice discrepancy.,CUST-010,Kavya,,24,,,2026-08-01,True,,,,,invoice_dispute,b2b_receivable,,2026-08-26T07:19:00
+43103,,,RV-00105,Our cash flow is tight this month.,CUST-002,Priya,,36,,,2026-07-20,False,,,,,b2b_cashflow_delay,b2b_receivable,,2026-08-26T22:44:00

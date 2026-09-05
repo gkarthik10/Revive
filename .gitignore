@@ -1,0 +1,36 @@
+# Environment variables (Razorpay keys, Groq key, Resend key, ElevenLabs key, JWT secret, etc.)
+.env
+.env.*
+!.env.example
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Generated / captured artifacts that shouldn't be treated as source
+# (real_captured_case.json is a *generated* output of
+# razorpay_live_capture.py, and live_cases.json accumulates real
+# webhook-captured payment failures — neither is something to
+# hand-edit or commit; keep them out of git)
+backend/app/data/real_captured_case.json
+backend/app/data/live_cases.json

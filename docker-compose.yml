@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    # Persist the complete backend data directory on the host.
+    # This keeps users, customers, promises, alerts, live cases,
+    # A2A settlements, batch history, and other file-backed state
+    # across container rebuilds/recreates.
+    volumes:
+      - ./backend/app/data:/app/app/data
+
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+
+    ports:
+      - "5173:5173"
+
+    depends_on:
+      - backend
+
+    restart: unless-stopped

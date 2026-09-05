@@ -1,0 +1,18 @@
+# Node
+node_modules/
+dist/
+build/
+
+# Env overrides (root .gitignore already covers .env; this is belt-and-suspenders)
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Logs
+npm-debug.log*
