@@ -1,5 +1,26 @@
-<<<<<<< HEAD
-[]
-=======
-
->>>>>>> d4a5ae54a14bffc55944537ce6cc85ce1ee5dbc6
+[
+  {
+    "id": "53533ed0-c485-4d1a-985d-d00bd74e7471",
+    "name": "Revive Admin",
+    "email": "admin@revive.ai",
+    "password_hash": "pbkdf2_sha256$260000$c8a113f4a5444279f179c21115634bc4$ab03c0da5cdf8a6e0b922ca4da64e16e36524c82e023d43238c4d99c3b71c982",
+    "role": "admin",
+    "created_at": "2026-09-06T05:17:29.189558+00:00"
+  },
+  {
+    "id": "307cbfcb-520a-4094-9e37-8e1993a00c8d",
+    "name": "Revive Operator",
+    "email": "operator@revive.ai",
+    "password_hash": "pbkdf2_sha256$260000$42242df3bbc450c97721d1318f9a78ec$7b40e9b43e8b63200cd1726ceffc510e45f99d1dd25b318c8bab9de70f19ab1d",
+    "role": "operator",
+    "created_at": "2026-09-06T05:18:35.357426+00:00"
+  },
+  {
+    "id": "b315ee26-0a0e-439e-af91-a65bcd01c937",
+    "name": "Revive Viewer",
+    "email": "viewer@revive.ai",
+    "password_hash": "pbkdf2_sha256$260000$de802ba6a493784d993ce53b89bf9f9b$6b9de009d2751d46abd2a2bab63a9c09c2e6da126da915ac5af2871fc76dd3aa",
+    "role": "viewer",
+    "created_at": "2026-09-06T05:19:04.762196+00:00"
+  }
+]
