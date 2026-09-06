@@ -767,6 +767,10 @@ function App() {
     customer_name: "",
     customer_email: "",
     customer_id: "",
+    surface: "subscription_failure",
+    invoice_id: "",
+    has_ap_agent: false,
+    disputed: false,
   });
   const [knownCustomers, setKnownCustomers] = useState([]);
   const [creatingCheckout, setCreatingCheckout] = useState(false);
@@ -1384,6 +1388,10 @@ function App() {
         customer_name: checkoutForm.customer_name || "Revive Customer",
         customer_email: checkoutForm.customer_email.trim() || null,
         customer_id: checkoutForm.customer_id.trim() || null,
+        surface: checkoutForm.surface,
+        invoice_id: checkoutForm.invoice_id.trim() || null,
+        has_ap_agent: checkoutForm.has_ap_agent,
+        disputed: checkoutForm.disputed,
       });
 
       const shortUrl = response.data?.short_url;
@@ -4980,6 +4988,90 @@ function App() {
                     Revive resolves (or creates) the ID from the email above.
                   </small>
                 </div>
+
+                <div className="simulator-field">
+                  <label>SURFACE</label>
+
+                  <select
+                    value={checkoutForm.surface}
+                    onChange={(event) =>
+                      setCheckoutForm((prev) => ({
+                        ...prev,
+                        surface: event.target.value,
+                        // Clear B2B-only fields when switching away so a
+                        // stale invoice_id/has_ap_agent can't leak into an
+                        // unrelated surface.
+                        ...(event.target.value !== "b2b_receivable"
+                          ? { invoice_id: "", has_ap_agent: false, disputed: false }
+                          : {}),
+                      }))
+                    }
+                  >
+                    <option value="subscription_failure">
+                      Subscription failure
+                    </option>
+                    <option value="b2b_receivable">B2B receivable</option>
+                  </select>
+
+                  <small>
+                    Only "B2B receivable" cases are eligible for Live A2A
+                    settlement.
+                  </small>
+                </div>
+
+                {checkoutForm.surface === "b2b_receivable" && (
+                  <>
+                    <div className="simulator-field">
+                      <label>INVOICE ID</label>
+
+                      <input
+                        type="text"
+                        placeholder="INV-1001"
+                        value={checkoutForm.invoice_id}
+                        onChange={(event) =>
+                          setCheckoutForm((prev) => ({
+                            ...prev,
+                            invoice_id: event.target.value,
+                          }))
+                        }
+                      />
+
+                      <small>Required for A2A eligibility.</small>
+                    </div>
+
+                    <div className="simulator-field checkbox-field">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={checkoutForm.has_ap_agent}
+                          onChange={(event) =>
+                            setCheckoutForm((prev) => ({
+                              ...prev,
+                              has_ap_agent: event.target.checked,
+                            }))
+                          }
+                        />
+                        Payer has an AP agent (A2A eligible)
+                      </label>
+                    </div>
+
+                    <div className="simulator-field checkbox-field">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={checkoutForm.disputed}
+                          onChange={(event) =>
+                            setCheckoutForm((prev) => ({
+                              ...prev,
+                              disputed: event.target.checked,
+                            }))
+                          }
+                        />
+                        Invoice is disputed (blocks A2A negotiation)
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="simulator-actions">
