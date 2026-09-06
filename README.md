@@ -166,7 +166,7 @@ flowchart TB
     PROVE["PROVE<br/>Ledger + Verification + Audit"]
     LEARN["LEARN<br/>History + Outcomes + Systemic Signals"]
 
-    DATA[("Durable Data<br/>app/data/*.json + cases.json")]
+    DATA["Durable Data<br/>app/data/*.json + cases.json"]
 
     RAZOR["Razorpay Test Mode<br/>Payment Links + Webhooks"]
     A2A["Independent Payer/AP Agent<br/>A2A 1.0 JSON-RPC"]
@@ -182,11 +182,11 @@ flowchart TB
     PROVE --> LEARN
     LEARN --> SENSE
 
-    DATA <--> SENSE
-    DATA <--> DECIDE
-    DATA <--> ACT
-    DATA <--> PROVE
-    DATA <--> LEARN
+    DATA --- SENSE
+    DATA --- DECIDE
+    DATA --- ACT
+    DATA --- PROVE
+    DATA --- LEARN
 
     ACT --> RAZOR
     RAZOR --> PROVE
@@ -1028,13 +1028,13 @@ flowchart LR
     B["Browser"]
     F["Frontend Container<br/>Vite / React<br/>:5173"]
     API["Backend Container<br/>FastAPI / Uvicorn<br/>:8000"]
-    DATA[("Host-mounted<br/>backend/app/data")]
+    DATA["Host-mounted<br/>backend/app/data"]
     A2A["Independent Payer Agent<br/>:8100"]
 
     B --> F
     F --> API
-    API <--> DATA
-    API <--> A2A
+    API --- DATA
+    API --- A2A
 ```
 
 The main application runs as two Docker services:
