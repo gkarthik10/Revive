@@ -65,6 +65,78 @@ def _money(value: Any) -> str:
         return "₹0.00"
 
 
+def _psr_alert_to_notification(
+    alert: dict[str, Any],
+    notification_type: str,
+    title_prefix: str,
+) -> Notification | None:
+    """
+    Convert one RouteAlert dict (see app/psr_guardian/guardian.py)
+    into an operator-facing Notification.
+
+    Shared by both the synthetic PSR Guardian alerts and the
+    live (real Razorpay webhook-sourced) PSR Guardian alerts —
+    the schema coming out of guardian.detect_alerts() is
+    identical either way, only the data fed into it differs.
+    """
+
+    if not isinstance(alert, dict):
+        return None
+
+    # RouteAlert carries no "title" field, but it does carry the
+    # route (bank/card_network) that triggered the anomaly — use
+    # that to build a title that's actually useful to an operator
+    # instead of a generic fallback.
+    bank = alert.get("bank")
+    card_network = alert.get("card_network")
+
+    if bank and card_network:
+        title = f"{title_prefix}: {bank}/{card_network}"
+    elif bank:
+        title = f"{title_prefix}: {bank}"
+    else:
+        title = _value(
+            alert,
+            "title",
+            "alert_title",
+            "type",
+            "alert_type",
+            default=title_prefix,
+        )
+
+    message = _value(
+        alert,
+        "message",
+        "description",
+        "recommendation",
+        "reason",
+        default="PSR Guardian identified a systemic recovery risk.",
+    )
+
+    # RouteAlert carries a real, deterministic severity
+    # (CRITICAL / HIGH / MEDIUM / LOW — see
+    # guardian.calculate_severity). Use it instead of hardcoding
+    # "HIGH" for every alert, which would misreport a LOW
+    # anomaly as urgent and a CRITICAL one as merely "HIGH".
+    severity = str(
+        _value(
+            alert,
+            "severity",
+            default="HIGH",
+        )
+    ).strip().upper()
+
+    if severity not in {"CRITICAL", "HIGH", "MEDIUM", "LOW"}:
+        severity = "HIGH"
+
+    return Notification(
+        notification_type=notification_type,
+        severity=severity,
+        title=str(title),
+        message=str(message),
+    )
+
+
 # ============================================================
 # Notification generation
 # ============================================================
@@ -74,6 +146,7 @@ def generate_notifications(
     psr_alerts: list[dict[str, Any]],
     a2a_settlements: list[dict[str, Any]],
     live_cases: list[dict[str, Any]] | None = None,
+    live_psr_alerts: list[dict[str, Any]] | None = None,
 ) -> list[Notification]:
     """
     Generate operator-facing notifications from an already
@@ -92,6 +165,16 @@ def generate_notifications(
             High-value cases that were stopped and therefore
             deserve operator attention.
 
+        live_psr_alerts
+            Systemic payment-risk alerts computed over REAL
+            Razorpay webhook-captured failures (see
+            app/psr_guardian/guardian.py::detect_alerts, fed
+            with live_case_store.load() instead of the synthetic
+            cases.json benchmark). Kept as a separate parameter
+            from psr_alerts, consistent with this codebase's
+            general pattern of keeping the synthetic pipeline and
+            real Razorpay Test Mode data isolated.
+
     This function does not modify cases, policy, ROI, A2A,
     or ledger state.
     """
@@ -99,69 +182,34 @@ def generate_notifications(
     notifications: list[Notification] = []
 
     # ========================================================
-    # PSR Guardian alerts
+    # PSR Guardian alerts (synthetic benchmark)
     # ========================================================
 
     for alert in psr_alerts:
 
-        if not isinstance(alert, dict):
-            continue
-
-        # Real PSR Guardian alerts (see app/psr_guardian/guardian.py)
-        # carry no "title" field, but they do carry the route
-        # (bank/card_network) that triggered the anomaly — use that
-        # to build a title that's actually useful to an operator
-        # instead of a generic fallback.
-        bank = alert.get("bank")
-        card_network = alert.get("card_network")
-
-        if bank and card_network:
-            title = f"Payment Failure Cluster: {bank}/{card_network}"
-        elif bank:
-            title = f"Payment Failure Cluster: {bank}"
-        else:
-            title = _value(
-                alert,
-                "title",
-                "alert_title",
-                "type",
-                "alert_type",
-                default="PSR Guardian Alert",
-            )
-
-        message = _value(
+        notification = _psr_alert_to_notification(
             alert,
-            "message",
-            "description",
-            "recommendation",
-            "reason",
-            default="PSR Guardian identified a systemic recovery risk.",
+            notification_type="PSR_ALERT",
+            title_prefix="Payment Failure Cluster",
         )
 
-        # Real alerts carry a real, deterministic severity
-        # (CRITICAL / HIGH / MEDIUM / LOW — see
-        # guardian.calculate_severity). Use it instead of hardcoding
-        # "HIGH" for every alert, which would misreport a LOW
-        # anomaly as urgent and a CRITICAL one as merely "HIGH".
-        severity = str(
-            _value(
-                alert,
-                "severity",
-                default="HIGH",
-            )
-        ).strip().upper()
+        if notification is not None:
+            notifications.append(notification)
 
-        if severity not in {"CRITICAL", "HIGH", "MEDIUM", "LOW"}:
-            severity = "HIGH"
+    # ========================================================
+    # PSR Guardian alerts (live Razorpay Test Mode data)
+    # ========================================================
 
-        notifications.append(
-            Notification(
-                notification_type="PSR_ALERT",
-                severity=severity,
-                title=str(title),
-                message=str(message),
-            )
+    for alert in live_psr_alerts or []:
+
+        notification = _psr_alert_to_notification(
+            alert,
+            notification_type="LIVE_PSR_ALERT",
+            title_prefix="Real Payment Failure Cluster",
         )
+
+        if notification is not None:
+            notifications.append(notification)
 
     # ========================================================
     # A2A settlements
