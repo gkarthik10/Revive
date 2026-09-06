@@ -121,7 +121,7 @@ Health    → http://localhost:8000/api/health
 ### First-time login
 
 This repo ships with a **pre-seeded demo team** in `backend/app/data/users.json`
-(`admin@revive.ai`, `operator@revive.ai`, `tester@revive.ai`) so reviewers see
+(`admin@revive.ai`, `operator@revive.ai`, `viewer@revive.ai`) so reviewers see
 Team management populated immediately. Their passwords aren't published in
 this repo — if you have them, just log in and skip to Team management below.
 
