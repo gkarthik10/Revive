@@ -704,6 +704,7 @@ function App() {
 
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedSettlement, setSelectedSettlement] = useState(null);
+  const [selectedLivePayment, setSelectedLivePayment] = useState(null);
 
   /* Decision Explainer */
 
@@ -1147,6 +1148,14 @@ function App() {
     setSelectedCase(null);
     setExplanation(null);
     setExplanationQuestion("");
+  }
+
+  function openLivePayment(item) {
+    setSelectedLivePayment(item);
+  }
+
+  function closeLivePaymentModal() {
+    setSelectedLivePayment(null);
   }
 
   function closeExplanationModal() {
@@ -5128,7 +5137,10 @@ function App() {
 
                     <tbody>
                       {livePayments.map((item) => (
-                        <tr key={item.case_id}>
+                        <tr
+                          key={item.case_id}
+                          onClick={() => openLivePayment(item)}
+                        >
                           <td>
                             <strong>{item.case_id}</strong>
                           </td>
@@ -5165,7 +5177,10 @@ function App() {
                                   padding: "6px 12px",
                                   fontSize: "12px",
                                 }}
-                                onClick={() => retryLivePayment(item.case_id)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  retryLivePayment(item.case_id);
+                                }}
                                 disabled={retryingCaseId === item.case_id}
                               >
                                 {retryingCaseId === item.case_id
@@ -6649,6 +6664,217 @@ function App() {
               caseId={selectedCase.case_id}
               apiBase={API_BASE}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================
+          LIVE PAYMENT DETAIL MODAL
+      ====================================================== */}
+
+      {selectedLivePayment && (
+        <div className="modal-backdrop" onClick={closeLivePaymentModal}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="section-kicker">LIVE PAYMENT FAILURE</div>
+
+                <h2>{selectedLivePayment.case_id}</h2>
+
+                <p className="modal-subtitle">
+                  {selectedLivePayment.invoice_id
+                    ? `Invoice ${selectedLivePayment.invoice_id}`
+                    : "Real Razorpay test-mode failure"}
+                </p>
+              </div>
+
+              <button
+                className="close-button"
+                onClick={closeLivePaymentModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="detail-grid">
+              <div>
+                <span>CUSTOMER</span>
+                <strong>{selectedLivePayment.customer_name || "—"}</strong>
+              </div>
+
+              <div>
+                <span>EMAIL</span>
+                <strong>{selectedLivePayment.customer_email || "—"}</strong>
+              </div>
+
+              <div>
+                <span>AMOUNT</span>
+                <strong>{formatCurrency(selectedLivePayment.amount)}</strong>
+              </div>
+
+              <div>
+                <span>SURFACE</span>
+                <strong>{selectedLivePayment.surface || "—"}</strong>
+              </div>
+
+              <div>
+                <span>INVOICE ID</span>
+                <strong>{selectedLivePayment.invoice_id || "—"}</strong>
+              </div>
+
+              <div>
+                <span>HAS AP AGENT</span>
+                <strong>
+                  {selectedLivePayment.has_ap_agent ? "YES" : "NO"}
+                </strong>
+              </div>
+
+              <div>
+                <span>DISPUTED</span>
+                <strong>{selectedLivePayment.disputed ? "YES" : "NO"}</strong>
+              </div>
+
+              <div>
+                <span>ROOT CAUSE</span>
+
+                <StatusBadge
+                  value={selectedLivePayment.root_cause_label || "N/A"}
+                />
+              </div>
+
+              <div>
+                <span>PAYMENT METHOD</span>
+                <strong>{selectedLivePayment.payment_method || "—"}</strong>
+              </div>
+
+              <div>
+                <span>BANK / WALLET</span>
+                <strong>{selectedLivePayment.bank || "—"}</strong>
+              </div>
+
+              <div>
+                <span>CARD NETWORK</span>
+                <strong>{selectedLivePayment.card_network || "—"}</strong>
+              </div>
+
+              <div>
+                <span>STATUS</span>
+
+                <StatusBadge
+                  value={
+                    selectedLivePayment.recovery_status ||
+                    selectedLivePayment.outcome ||
+                    "PENDING_RECOVERY"
+                  }
+                />
+              </div>
+
+              <div>
+                <span>RECOVERED AMOUNT</span>
+
+                <strong>
+                  {formatCurrency(selectedLivePayment.recovered_amount)}
+                </strong>
+              </div>
+
+              <div>
+                <span>RECOVERED AT</span>
+
+                <strong>
+                  {selectedLivePayment.recovered_at
+                    ? formatDate(selectedLivePayment.recovered_at)
+                    : "—"}
+                </strong>
+              </div>
+
+              <div>
+                <span>RAZORPAY PAYMENT ID</span>
+
+                <strong>
+                  {selectedLivePayment.razorpay_payment_id || "—"}
+                </strong>
+              </div>
+
+              <div>
+                <span>DETECTED AT</span>
+                <strong>{formatDate(selectedLivePayment.timestamp)}</strong>
+              </div>
+            </div>
+
+            {selectedLivePayment.razorpay_raw_error &&
+              (selectedLivePayment.razorpay_raw_error.error_description ||
+                selectedLivePayment.razorpay_raw_error.error_reason) && (
+                <div className="policy-warning">
+                  <strong>Razorpay Failure Detail</strong>
+
+                  <ul>
+                    {selectedLivePayment.razorpay_raw_error.error_reason && (
+                      <li>
+                        Reason:{" "}
+                        {selectedLivePayment.razorpay_raw_error.error_reason}
+                      </li>
+                    )}
+
+                    {selectedLivePayment.razorpay_raw_error
+                      .error_description && (
+                      <li>
+                        {
+                          selectedLivePayment.razorpay_raw_error
+                            .error_description
+                        }
+                      </li>
+                    )}
+
+                    {selectedLivePayment.razorpay_raw_error.error_code && (
+                      <li>
+                        Code:{" "}
+                        {selectedLivePayment.razorpay_raw_error.error_code}
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+            <div className="modal-footer-actions">
+              {selectedLivePayment.recovery_status ===
+                "PENDING_RECOVERY" && (
+                <button
+                  className="run-button"
+                  onClick={() =>
+                    retryLivePayment(selectedLivePayment.case_id)
+                  }
+                  disabled={retryingCaseId === selectedLivePayment.case_id}
+                >
+                  {retryingCaseId === selectedLivePayment.case_id
+                    ? "Opening..."
+                    : "↻ Retry Payment"}
+                </button>
+              )}
+
+              {isLiveA2aEligible(selectedLivePayment) && (
+                <button
+                  className="close-button reset-button"
+                  onClick={() => {
+                    const existing = getLiveA2aForCase(
+                      selectedLivePayment.case_id,
+                    );
+
+                    closeLivePaymentModal();
+
+                    if (existing) {
+                      setSelectedLiveA2a(existing);
+                    } else {
+                      startLiveA2aSettlement(selectedLivePayment);
+                    }
+                  }}
+                  disabled={a2aActionCaseId === selectedLivePayment.case_id}
+                >
+                  {getLiveA2aForCase(selectedLivePayment.case_id)
+                    ? "View A2A Agreement"
+                    : "⚡ Start A2A Settlement"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
