@@ -1305,10 +1305,11 @@ In the Razorpay Dashboard → **Settings → Webhooks**:
   (`backend/app/auth/middleware.py`) — Razorpay can't log in, so the route
   authenticates each request itself via the `X-Razorpay-Signature` header
   instead.
-- A request with a missing or non-matching signature is rejected with
-  `400 Invalid or missing webhook signature`. If that happens, re-check
-  that the secret in `.env` is the **webhook** secret from the Dashboard,
-  not the API key secret, and that it matches exactly.
+- A request is rejected with `400 Invalid or missing webhook signature` if
+  the `X-Razorpay-Signature` header is absent, doesn't match, or
+  `RAZORPAY_WEBHOOK_SECRET` isn't set in `.env` at all. If that happens,
+  re-check that the secret in `.env` is the **webhook** secret from the
+  Dashboard, not the API key secret, and that it matches exactly.
 - Duplicate webhook deliveries (Razorpay retries) are handled
   idempotently — safe to receive the same event twice.
 
