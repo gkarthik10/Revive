@@ -2327,6 +2327,26 @@ tbody td .badge + small.decision-reason {
   margin: 0;
 }
 
+/* Live PSR Guardian — same alert-card layout as the synthetic PSR
+   section, recolored with the "live" accent (see .live-badge) so
+   it reads as real data instead of the synthetic benchmark. */
+
+.alert-card-live {
+  border-color: var(--accent-border);
+  background: rgba(61, 220, 132, 0.04);
+}
+
+.alert-card-live .alert-icon {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.alert-card-live .alert-recommendation {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
