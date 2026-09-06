@@ -763,6 +763,7 @@ function App() {
 
   const [livePayments, setLivePayments] = useState([]);
   const [liveMetrics, setLiveMetrics] = useState(null);
+  const [livePsrAlerts, setLivePsrAlerts] = useState([]);
   const [checkoutForm, setCheckoutForm] = useState({
     amount: "",
     customer_name: "",
@@ -1368,6 +1369,22 @@ function App() {
     }
   }
 
+  async function loadLivePsrAlerts() {
+    try {
+      const response = await axios.get(
+        `${API_BASE}/psr-guardian/live-alerts`,
+      );
+
+      setLivePsrAlerts(
+        Array.isArray(response.data?.live_alerts)
+          ? response.data.live_alerts
+          : [],
+      );
+    } catch (err) {
+      console.error("Live PSR alerts fetch error:", err);
+    }
+  }
+
   async function loadCustomers() {
     try {
       const response = await axios.get(`${API_BASE}/customers`);
@@ -1806,6 +1823,7 @@ function App() {
     loadLivePayments();
     loadLiveA2aSettlements();
     loadLiveMetrics();
+    loadLivePsrAlerts();
     loadNotifications();
     loadPromises();
     loadBatchHistory();
@@ -1816,6 +1834,7 @@ function App() {
       loadLivePayments();
       loadLiveA2aSettlements();
       loadLiveMetrics();
+      loadLivePsrAlerts();
       loadNotifications();
       loadPromises();
       loadCustomers();
@@ -2641,6 +2660,11 @@ function App() {
           <a href="#live-performance">
             <span>↗</span>
             <span>Live Recovery</span>
+          </a>
+
+          <a href="#live-psr-guardian">
+            <span>🛡</span>
+            <span>Live PSR Guardian</span>
           </a>
 
           <a href="#promises">
@@ -5011,7 +5035,11 @@ function App() {
                         // stale invoice_id/has_ap_agent can't leak into an
                         // unrelated surface.
                         ...(value !== "b2b_receivable"
-                          ? { invoice_id: "", has_ap_agent: false, disputed: false }
+                          ? {
+                              invoice_id: "",
+                              has_ap_agent: false,
+                              disputed: false,
+                            }
                           : {}),
                       }))
                     }
@@ -5462,6 +5490,118 @@ function App() {
             ) : (
               <EmptyState>
                 Live Razorpay recovery metrics are loading...
+              </EmptyState>
+            )}
+          </section>
+
+          {/* ====================================================
+            LIVE PSR GUARDIAN
+        ==================================================== */}
+
+          <section id="live-psr-guardian" className="section-block">
+            <div className="section-heading">
+              <div>
+                <div className="section-kicker">LIVE SYSTEMIC RISK</div>
+
+                <h2>Live PSR Guardian</h2>
+
+                <p className="section-description">
+                  The same route-level anomaly detection as PSR Guardian
+                  above, computed over real Razorpay Test Mode webhook
+                  failures instead of the synthetic benchmark. Completely
+                  isolated — no synthetic data is involved.
+                </p>
+              </div>
+
+              <span className="live-badge alert-count-badge">
+                {livePsrAlerts.length} active alert
+                {livePsrAlerts.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            {livePsrAlerts.length > 0 ? (
+              livePsrAlerts.map((alert, index) => (
+                <div
+                  className="alert-card alert-card-live"
+                  key={`live-${alert.bank}-${alert.card_network}-${index}`}
+                >
+                  <div className="alert-header">
+                    <div className="alert-icon">🛡</div>
+
+                    <div>
+                      <StatusBadge value={alert.severity || "HIGH"} />
+                    </div>
+
+                    <div className="alert-id">
+                      LIVE-PSR-{String(index + 1).padStart(3, "0")}
+                    </div>
+                  </div>
+
+                  <h3 className="alert-title">
+                    Systemic route degradation (live)
+                  </h3>
+
+                  <p className="alert-summary">
+                    {alert.concentrated_cases} of {alert.group_size}{" "}
+                    {String(alert.decline_code || "").replace(/_/g, " ")}{" "}
+                    real failures on {alert.bank} / {alert.card_network}{" "}
+                    concentrated inside one window starting{" "}
+                    {formatDate(alert.window_start)}.
+                  </p>
+
+                  <div className="alert-grid">
+                    <div>
+                      <span>ROUTE</span>
+
+                      <strong>
+                        {alert.bank}
+                        {" / "}
+                        {alert.card_network}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>CONCENTRATION</span>
+
+                      <strong>
+                        {formatPercent(alert.concentration_ratio)}{" "}
+                        concentration
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>DETECTION</span>
+
+                      <strong>Live PSR stream analysis</strong>
+                    </div>
+                  </div>
+
+                  <div className="alert-recommendation">
+                    <span>RECOMMENDED ACTION</span>
+
+                    <p>{alert.recommendation}</p>
+                  </div>
+
+                  {Array.isArray(alert.evidence) &&
+                    alert.evidence.length > 0 && (
+                      <div className="evidence-box">
+                        <div className="evidence-title">Evidence</div>
+
+                        {alert.evidence.map((evidence, evidenceIndex) => (
+                          <div className="evidence-item" key={evidenceIndex}>
+                            {typeof evidence === "object"
+                              ? JSON.stringify(evidence)
+                              : String(evidence)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              ))
+            ) : (
+              <EmptyState>
+                ✓ No systemic anomalies detected in real payment failures
+                yet.
               </EmptyState>
             )}
           </section>
@@ -6688,10 +6828,7 @@ function App() {
                 </p>
               </div>
 
-              <button
-                className="close-button"
-                onClick={closeLivePaymentModal}
-              >
+              <button className="close-button" onClick={closeLivePaymentModal}>
                 ×
               </button>
             </div>
@@ -6836,13 +6973,10 @@ function App() {
               )}
 
             <div className="modal-footer-actions">
-              {selectedLivePayment.recovery_status ===
-                "PENDING_RECOVERY" && (
+              {selectedLivePayment.recovery_status === "PENDING_RECOVERY" && (
                 <button
                   className="run-button"
-                  onClick={() =>
-                    retryLivePayment(selectedLivePayment.case_id)
-                  }
+                  onClick={() => retryLivePayment(selectedLivePayment.case_id)}
                   disabled={retryingCaseId === selectedLivePayment.case_id}
                 >
                   {retryingCaseId === selectedLivePayment.case_id
