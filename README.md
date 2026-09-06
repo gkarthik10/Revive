@@ -1248,13 +1248,69 @@ rzp_test_...
 
 Keep Razorpay secrets only in `.env`.
 
-For external webhook testing, expose the local backend with your preferred secure tunnel and configure:
+## Webhook integration (Razorpay → Revive)
 
-```text
-POST /api/payments/webhook
+Razorpay needs to reach your backend over the public internet to deliver
+`payment.failed` / `payment.captured` events — `localhost:8000` isn't
+reachable from Razorpay's servers, so a tunnel is required for anything
+beyond payment-link creation.
+
+### 1. Start the tunnel
+
+With the stack already running (`docker compose up`, backend on
+`localhost:8000`):
+
+```bash
+docker run --rm cloudflare/cloudflared:latest tunnel --url http://host.docker.internal:8000
 ```
 
-as the Razorpay webhook endpoint.
+> On Linux (native Docker Engine, not Docker Desktop), `host.docker.internal`
+> isn't resolved automatically — add
+> `--add-host=host.docker.internal:host-gateway` to the command above, or
+> point `--url` at your host's LAN IP instead.
+
+`cloudflared` prints a random `https://<something>.trycloudflare.com` URL
+in its logs — that's your public tunnel URL for this session. This is
+Cloudflare's free **Quick Tunnel**: no account or domain needed, but the
+URL is temporary and changes every time you restart this command, so
+you'll need to redo step 3 whenever the tunnel restarts.
+
+### 2. Verify it's actually reachable
+
+`/api/payments/webhook` also accepts `GET` purely as a reachability check
+(it's not what Razorpay calls). From a device that is **not** on your
+local network — your phone on mobile data, or https://reqbin.com — hit:
+
+```text
+GET https://<your-tunnel-subdomain>.trycloudflare.com/api/payments/webhook
+```
+
+You should get back `{"success": true, "reachable": true, ...}`. If you
+don't, fix the tunnel before touching any webhook logic — Razorpay can't
+reach a server your phone can't reach either.
+
+### 3. Register the webhook in Razorpay
+
+In the Razorpay Dashboard → **Settings → Webhooks**:
+
+- **Webhook URL:** `https://<your-tunnel-subdomain>.trycloudflare.com/api/payments/webhook`
+- **Active events:** at minimum `payment.failed` and `payment.captured`
+- **Secret:** set this to the exact same value as `RAZORPAY_WEBHOOK_SECRET`
+  in your `.env` — a mismatch is the most common cause of rejected webhooks
+  (see below)
+
+### 4. Notes
+
+- This route is deliberately excluded from Revive's JWT auth middleware
+  (`backend/app/auth/middleware.py`) — Razorpay can't log in, so the route
+  authenticates each request itself via the `X-Razorpay-Signature` header
+  instead.
+- A request with a missing or non-matching signature is rejected with
+  `400 Invalid or missing webhook signature`. If that happens, re-check
+  that the secret in `.env` is the **webhook** secret from the Dashboard,
+  not the API key secret, and that it matches exactly.
+- Duplicate webhook deliveries (Razorpay retries) are handled
+  idempotently — safe to receive the same event twice.
 
 ---
 
