@@ -118,7 +118,33 @@ Backend   → http://localhost:8000
 Health    → http://localhost:8000/api/health
 ```
 
-Log in with the bootstrap admin account created on first run (see [Authentication & Team Access](#authentication--team-access)), or register the first user via `/api/auth/register`.
+### First-time login
+
+This repo ships with a **pre-seeded demo team** in `backend/app/data/users.json`
+(`admin@revive.ai`, `operator@revive.ai`, `tester@revive.ai`) so reviewers see
+Team management populated immediately. Their passwords aren't published in
+this repo — if you have them, just log in and skip to Team management below.
+
+Standing up your **own instance** without those credentials? You need to
+bootstrap your own admin instead of the seeded one:
+
+1. Before first run, empty the seed file on the host (it's bind-mounted, so
+   editing it only inside a running container won't stick):
+   ```bash
+   echo "[]" > backend/app/data/users.json
+   ```
+2. Start the stack: `docker compose up --build`
+3. Call the bootstrap endpoint **once** — it only works while `users.json`
+   is empty, and closes permanently after the first account is created:
+   ```bash
+   curl -X POST http://localhost:8000/api/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Your Name", "email": "you@example.com", "password": "a-strong-password"}'
+   ```
+   This account is automatically made `ADMIN`.
+4. Log in at http://localhost:5173 with that email/password.
+5. Add everyone else from **inside the app** (see Team management below) —
+   `/api/auth/register` is now disabled for good.
 
 Every external integration (Razorpay, Resend, ElevenLabs, Groq/OpenAI, the A2A payer agent) is **optional** — the system runs fully offline on its seeded synthetic dataset with no keys configured at all. See [Environment Variables](#environment-variables) for what each key unlocks.
 
@@ -767,6 +793,33 @@ VIEWER
 ```
 
 Passwords are hashed with PBKDF2-HMAC-SHA256 using the standard library.
+
+### How the first admin is created
+
+There's no separate setup script — the first row ever written to
+`users.json` is automatically promoted to `ADMIN` through the public
+`POST /api/auth/register` route. That route disables itself permanently
+(`403 Forbidden`) the instant any account exists (`has_users()` in
+`backend/app/auth/store.py`).
+
+**Note:** this repo is checked in with a non-empty, pre-seeded
+`backend/app/data/users.json` (see [Quick Start](#quick-start)), so
+`/api/auth/register` is closed by default on a fresh clone unless you
+empty that file first.
+
+### How every admin after that is added
+
+Once an admin exists, all further teammates are added **inside the app**,
+never through `/api/auth/register`:
+
+1. Sign in as an admin.
+2. Open the user menu (top right) → **Team management**.
+3. Fill in name, work email, password, and role (`admin` / `operator` /
+   `viewer`) — this calls `POST /api/auth/users`.
+4. Roles can be changed (`PATCH /api/auth/users/{id}/role`) or members
+   removed (`DELETE /api/auth/users/{id}`) from the same panel. Revive
+   always keeps at least one admin — the last one can't be demoted or
+   deleted.
 
 The application is intended as a **private team workspace**, not a public self-registration product.
 
