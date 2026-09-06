@@ -1061,8 +1061,20 @@ function App() {
       setExportingReport(true);
       setError("");
 
+      // Mirror the exact filters applied to `filteredCases` above, so
+      // the exported PDF's Case Register / Ledger / A2A sections match
+      // what's currently shown in the case table instead of always
+      // exporting the full unfiltered pipeline result.
+      const params = {};
+      if (search.trim()) params.search = search.trim();
+      if (decisionFilter !== "ALL") params.decision = decisionFilter;
+      if (outcomeFilter !== "ALL") params.outcome = outcomeFilter;
+
+      const hasActiveFilter = Object.keys(params).length > 0;
+
       const response = await axios.get(`${API_BASE}/board-report`, {
         responseType: "blob",
+        params,
       });
 
       const contentType = response.headers["content-type"] || "";
@@ -1091,7 +1103,9 @@ function App() {
       }, 1000);
 
       showToast(
-        `${filteredCases.length} filtered cases exported with evidence`,
+        hasActiveFilter
+          ? `${filteredCases.length} filtered cases exported with evidence`
+          : `Board report exported \u2014 all ${filteredCases.length} cases with evidence`,
       );
     } catch (err) {
       console.error("Board report export error:", err);
@@ -1371,9 +1385,7 @@ function App() {
 
   async function loadLivePsrAlerts() {
     try {
-      const response = await axios.get(
-        `${API_BASE}/psr-guardian/live-alerts`,
-      );
+      const response = await axios.get(`${API_BASE}/psr-guardian/live-alerts`);
 
       setLivePsrAlerts(
         Array.isArray(response.data?.live_alerts)
@@ -5506,10 +5518,10 @@ function App() {
                 <h2>Live PSR Guardian</h2>
 
                 <p className="section-description">
-                  The same route-level anomaly detection as PSR Guardian
-                  above, computed over real Razorpay Test Mode webhook
-                  failures instead of the synthetic benchmark. Completely
-                  isolated — no synthetic data is involved.
+                  The same route-level anomaly detection as PSR Guardian above,
+                  computed over real Razorpay Test Mode webhook failures instead
+                  of the synthetic benchmark. Completely isolated — no synthetic
+                  data is involved.
                 </p>
               </div>
 
@@ -5543,10 +5555,9 @@ function App() {
 
                   <p className="alert-summary">
                     {alert.concentrated_cases} of {alert.group_size}{" "}
-                    {String(alert.decline_code || "").replace(/_/g, " ")}{" "}
-                    real failures on {alert.bank} / {alert.card_network}{" "}
-                    concentrated inside one window starting{" "}
-                    {formatDate(alert.window_start)}.
+                    {String(alert.decline_code || "").replace(/_/g, " ")} real
+                    failures on {alert.bank} / {alert.card_network} concentrated
+                    inside one window starting {formatDate(alert.window_start)}.
                   </p>
 
                   <div className="alert-grid">
@@ -5564,8 +5575,7 @@ function App() {
                       <span>CONCENTRATION</span>
 
                       <strong>
-                        {formatPercent(alert.concentration_ratio)}{" "}
-                        concentration
+                        {formatPercent(alert.concentration_ratio)} concentration
                       </strong>
                     </div>
 
@@ -5600,8 +5610,7 @@ function App() {
               ))
             ) : (
               <EmptyState>
-                ✓ No systemic anomalies detected in real payment failures
-                yet.
+                ✓ No systemic anomalies detected in real payment failures yet.
               </EmptyState>
             )}
           </section>
