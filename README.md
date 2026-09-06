@@ -118,7 +118,33 @@ Backend   → http://localhost:8000
 Health    → http://localhost:8000/api/health
 ```
 
-Log in with the bootstrap admin account created on first run (see [Authentication & Team Access](#authentication--team-access)), or register the first user via `/api/auth/register`.
+### First-time login
+
+This repo ships with a **pre-seeded demo team** in `backend/app/data/users.json`
+(`admin@revive.ai`, `operator@revive.ai`, `tester@revive.ai`) so reviewers see
+Team management populated immediately. Their passwords aren't published in
+this repo — if you have them, just log in and skip to Team management below.
+
+Standing up your **own instance** without those credentials? You need to
+bootstrap your own admin instead of the seeded one:
+
+1. Before first run, empty the seed file on the host (it's bind-mounted, so
+   editing it only inside a running container won't stick):
+   ```bash
+   echo "[]" > backend/app/data/users.json
+   ```
+2. Start the stack: `docker compose up --build`
+3. Call the bootstrap endpoint **once** — it only works while `users.json`
+   is empty, and closes permanently after the first account is created:
+   ```bash
+   curl -X POST http://localhost:8000/api/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Your Name", "email": "you@example.com", "password": "a-strong-password"}'
+   ```
+   This account is automatically made `ADMIN`.
+4. Log in at http://localhost:5173 with that email/password.
+5. Add everyone else from **inside the app** (see Team management below) —
+   `/api/auth/register` is now disabled for good.
 
 Every external integration (Razorpay, Resend, ElevenLabs, Groq/OpenAI, the A2A payer agent) is **optional** — the system runs fully offline on its seeded synthetic dataset with no keys configured at all. See [Environment Variables](#environment-variables) for what each key unlocks.
 
@@ -140,7 +166,7 @@ flowchart TB
     PROVE["PROVE<br/>Ledger + Verification + Audit"]
     LEARN["LEARN<br/>History + Outcomes + Systemic Signals"]
 
-    DATA[("Durable Data<br/>app/data/*.json + cases.json")]
+    DATA["Durable Data<br/>app/data/*.json + cases.json"]
 
     RAZOR["Razorpay Test Mode<br/>Payment Links + Webhooks"]
     A2A["Independent Payer/AP Agent<br/>A2A 1.0 JSON-RPC"]
@@ -156,11 +182,11 @@ flowchart TB
     PROVE --> LEARN
     LEARN --> SENSE
 
-    DATA <--> SENSE
-    DATA <--> DECIDE
-    DATA <--> ACT
-    DATA <--> PROVE
-    DATA <--> LEARN
+    DATA --- SENSE
+    DATA --- DECIDE
+    DATA --- ACT
+    DATA --- PROVE
+    DATA --- LEARN
 
     ACT --> RAZOR
     RAZOR --> PROVE
@@ -768,6 +794,33 @@ VIEWER
 
 Passwords are hashed with PBKDF2-HMAC-SHA256 using the standard library.
 
+### How the first admin is created
+
+There's no separate setup script — the first row ever written to
+`users.json` is automatically promoted to `ADMIN` through the public
+`POST /api/auth/register` route. That route disables itself permanently
+(`403 Forbidden`) the instant any account exists (`has_users()` in
+`backend/app/auth/store.py`).
+
+**Note:** this repo is checked in with a non-empty, pre-seeded
+`backend/app/data/users.json` (see [Quick Start](#quick-start)), so
+`/api/auth/register` is closed by default on a fresh clone unless you
+empty that file first.
+
+### How every admin after that is added
+
+Once an admin exists, all further teammates are added **inside the app**,
+never through `/api/auth/register`:
+
+1. Sign in as an admin.
+2. Open the user menu (top right) → **Team management**.
+3. Fill in name, work email, password, and role (`admin` / `operator` /
+   `viewer`) — this calls `POST /api/auth/users`.
+4. Roles can be changed (`PATCH /api/auth/users/{id}/role`) or members
+   removed (`DELETE /api/auth/users/{id}`) from the same panel. Revive
+   always keeps at least one admin — the last one can't be demoted or
+   deleted.
+
 The application is intended as a **private team workspace**, not a public self-registration product.
 
 ---
@@ -975,13 +1028,13 @@ flowchart LR
     B["Browser"]
     F["Frontend Container<br/>Vite / React<br/>:5173"]
     API["Backend Container<br/>FastAPI / Uvicorn<br/>:8000"]
-    DATA[("Host-mounted<br/>backend/app/data")]
+    DATA["Host-mounted<br/>backend/app/data"]
     A2A["Independent Payer Agent<br/>:8100"]
 
     B --> F
     F --> API
-    API <--> DATA
-    API <--> A2A
+    API --- DATA
+    API --- A2A
 ```
 
 The main application runs as two Docker services:
@@ -1195,13 +1248,70 @@ rzp_test_...
 
 Keep Razorpay secrets only in `.env`.
 
-For external webhook testing, expose the local backend with your preferred secure tunnel and configure:
+## Webhook integration (Razorpay → Revive)
 
-```text
-POST /api/payments/webhook
+Razorpay needs to reach your backend over the public internet to deliver
+`payment.failed` / `payment.captured` events — `localhost:8000` isn't
+reachable from Razorpay's servers, so a tunnel is required for anything
+beyond payment-link creation.
+
+### 1. Start the tunnel
+
+With the stack already running (`docker compose up`, backend on
+`localhost:8000`):
+
+```bash
+docker run --rm cloudflare/cloudflared:latest tunnel --url http://host.docker.internal:8000
 ```
 
-as the Razorpay webhook endpoint.
+> On Linux (native Docker Engine, not Docker Desktop), `host.docker.internal`
+> isn't resolved automatically — add
+> `--add-host=host.docker.internal:host-gateway` to the command above, or
+> point `--url` at your host's LAN IP instead.
+
+`cloudflared` prints a random `https://<something>.trycloudflare.com` URL
+in its logs — that's your public tunnel URL for this session. This is
+Cloudflare's free **Quick Tunnel**: no account or domain needed, but the
+URL is temporary and changes every time you restart this command, so
+you'll need to redo step 3 whenever the tunnel restarts.
+
+### 2. Verify it's actually reachable
+
+`/api/payments/webhook` also accepts `GET` purely as a reachability check
+(it's not what Razorpay calls). From a device that is **not** on your
+local network — your phone on mobile data, or https://reqbin.com — hit:
+
+```text
+GET https://<your-tunnel-subdomain>.trycloudflare.com/api/payments/webhook
+```
+
+You should get back `{"success": true, "reachable": true, ...}`. If you
+don't, fix the tunnel before touching any webhook logic — Razorpay can't
+reach a server your phone can't reach either.
+
+### 3. Register the webhook in Razorpay
+
+In the Razorpay Dashboard → **Settings → Webhooks**:
+
+- **Webhook URL:** `https://<your-tunnel-subdomain>.trycloudflare.com/api/payments/webhook`
+- **Active events:** at minimum `payment.failed` and `payment.captured`
+- **Secret:** set this to the exact same value as `RAZORPAY_WEBHOOK_SECRET`
+  in your `.env` — a mismatch is the most common cause of rejected webhooks
+  (see below)
+
+### 4. Notes
+
+- This route is deliberately excluded from Revive's JWT auth middleware
+  (`backend/app/auth/middleware.py`) — Razorpay can't log in, so the route
+  authenticates each request itself via the `X-Razorpay-Signature` header
+  instead.
+- A request is rejected with `400 Invalid or missing webhook signature` if
+  the `X-Razorpay-Signature` header is absent, doesn't match, or
+  `RAZORPAY_WEBHOOK_SECRET` isn't set in `.env` at all. If that happens,
+  re-check that the secret in `.env` is the **webhook** secret from the
+  Dashboard, not the API key secret, and that it matches exactly.
+- Duplicate webhook deliveries (Razorpay retries) are handled
+  idempotently — safe to receive the same event twice.
 
 ---
 
