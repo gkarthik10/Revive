@@ -137,9 +137,7 @@ bootstrap your own admin instead of the seeded one:
 3. Call the bootstrap endpoint **once** — it only works while `users.json`
    is empty, and closes permanently after the first account is created:
    ```bash
-   curl -X POST http://localhost:8000/api/auth/register \
-     -H "Content-Type: application/json" \
-     -d '{"name": "Your Name", "email": "you@example.com", "password": "a-strong-password"}'
+   Invoke-RestMethod -Uri "http://localhost:8000/api/auth/register" -Method POST -ContentType "application/json" -Body '{"name":"Your Name","email":"you@example.com","password":"a-strong-password"}'
    ```
    This account is automatically made `ADMIN`.
 4. Log in at http://localhost:5173 with that email/password.
