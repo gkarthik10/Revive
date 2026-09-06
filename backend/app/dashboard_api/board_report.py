@@ -21,6 +21,19 @@ full underlying data instead of a headline number:
     - The full A2A Settlement Register (every settlement row)
     - The full Recovery Ledger (every event, not just a count)
 
+That fix covered the synthetic 105-case benchmark pipeline result,
+but the dashboard also shows real Razorpay Test Mode data that is
+intentionally kept OUT of that synthetic pipeline (see
+dashboard_api/api.py: cases vs live-cases, metrics vs live_metrics,
+psr_alerts vs live psr alerts, a2a vs live A2A settlements, plus the
+separate real Razorpay sandbox capture). Because build_board_report_pdf
+only ever received the synthetic result, "Export snapshot" still
+silently omitted all of that -- every real Razorpay Test Mode case,
+alert, and settlement. build_board_report_pdf now optionally accepts
+a `live_data` dict (see its docstring) and renders a "LIVE RAZORPAY
+TEST MODE" section covering all of it, so the exported PDF matches
+everything the dashboard actually shows.
+
 Long tables use a repeating header row and paginate automatically;
 ReportLab splits a Table across pages at row boundaries by default.
 """
@@ -214,7 +227,11 @@ def _first_value(item: dict[str, Any], keys: list[str], default: Any = None) -> 
 # Board Report PDF
 # ============================================================
 
-def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
+def build_board_report_pdf(
+    result: dict[str, Any],
+    live_data: dict[str, Any] | None = None,
+    filter_note: str | None = None,
+) -> BytesIO:
     """
     Generate the executive Revive Board Report.
 
@@ -223,6 +240,29 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
     from the authoritative pipeline result. This function does NOT
     recalculate recovery logic and does NOT summarize away rows —
     "Export snapshot" is meant to be a complete record.
+
+    `result` is the synthetic 105-case benchmark pipeline result --
+    the same one every other section of this report is built from.
+
+    `live_data`, if provided, carries everything on the dashboard
+    that is intentionally kept OUT of that synthetic pipeline
+    result (see dashboard_api/api.py's cases vs live-cases,
+    metrics vs live_metrics, psr_alerts vs live psr alerts, and
+    a2a vs live A2A settlements). Without it, the PDF silently
+    omits every one of those dashboard sections even though they
+    are real, currently-visible data -- this parameter is what
+    makes "Export snapshot" actually match the dashboard. Expected
+    keys (all optional, all default to empty):
+        - "live_cases": list[dict]        (live_case_store.load())
+        - "live_metrics": dict             (build_live_metrics(...))
+        - "live_psr_alerts": list[dict]    (detect_alerts(...) over live cases)
+        - "live_a2a_settlements": list[dict] (live_a2a_settlement_store.list_all())
+        - "real_capture_case": dict | None (real_captured_case.json, if any)
+
+    `filter_note`, if provided, is rendered as a banner right under
+    the report header and again as context above the Case Register,
+    so a filtered export is clearly labeled as such rather than
+    looking like a full, unfiltered board report.
     """
 
     metrics = _metrics(result)
@@ -230,6 +270,27 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
     settlements = _a2a_results(result)
     ledger = _ledger(result)
     cases = _cases(result)
+
+    live_data = live_data if isinstance(live_data, dict) else {}
+
+    live_cases = live_data.get("live_cases", [])
+    live_cases = live_cases if isinstance(live_cases, list) else []
+
+    live_metrics = live_data.get("live_metrics", {})
+    live_metrics = live_metrics if isinstance(live_metrics, dict) else {}
+
+    live_psr_alerts = live_data.get("live_psr_alerts", [])
+    live_psr_alerts = live_psr_alerts if isinstance(live_psr_alerts, list) else []
+
+    live_a2a_settlements = live_data.get("live_a2a_settlements", [])
+    live_a2a_settlements = (
+        live_a2a_settlements if isinstance(live_a2a_settlements, list) else []
+    )
+
+    real_capture_case = live_data.get("real_capture_case")
+    real_capture_case = (
+        real_capture_case if isinstance(real_capture_case, dict) else None
+    )
 
     # Compute A2A eligible/settled ONCE from the settlement rows
     # themselves, so every table in this report (and the dashboard)
@@ -397,6 +458,26 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
         Paragraph(f"BOARD REPORT \u2022 Generated {report_time}", subtitle_style)
     )
 
+    if filter_note:
+        filter_banner = Table(
+            [[Paragraph(_xml_escape(filter_note), normal_style)]],
+            colWidths=[176 * mm],
+        )
+        filter_banner.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EFF8FF")),
+                    ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#B2DDFF")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                    ("TOPPADDING", (0, 0), (-1, -1), 7),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                ]
+            )
+        )
+        story.append(filter_banner)
+        story.append(Spacer(1, 10))
+
     # ========================================================
     # EXECUTIVE OUTCOME
     # ========================================================
@@ -527,24 +608,15 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
 
     story.append(dividend_table)
 
-    # ========================================================
-    # PSR GUARDIAN — ALL alerts, not just the first one
-    # ========================================================
+    def render_psr_alert_group(alert_list: list[dict[str, Any]]) -> None:
+        """
+        Render one alert-box per PSR alert. Shared by the synthetic
+        105-case benchmark's alerts and the live Razorpay Test Mode
+        alerts (same RouteAlert schema from psr_guardian/guardian.py
+        in both cases), so both sections stay visually identical.
+        """
 
-    story.append(Paragraph("PSR GUARDIAN", section_style))
-
-    if alerts:
-        story.append(
-            Paragraph(
-                f"{len(alerts)} systemic recovery-risk alert"
-                f"{'s' if len(alerts) != 1 else ''} detected in the "
-                f"current pipeline result.",
-                normal_style,
-            )
-        )
-        story.append(Spacer(1, 5))
-
-        for index, alert in enumerate(alerts, start=1):
+        for index, alert in enumerate(alert_list, start=1):
             alert_title = _first_value(
                 alert, ["title", "alert_type", "type"],
                 "Systemic recovery-risk alert",
@@ -596,7 +668,7 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
                 "Review the affected recovery pattern and policy constraints.",
             )
 
-            heading = f"<b>ALERT {index} of {len(alerts)}</b>"
+            heading = f"<b>ALERT {index} of {len(alert_list)}</b>"
             if severity and severity != "\u2014":
                 heading += f" \u2014 {severity} SEVERITY"
             heading += f"<br/>{_safe_text(alert_title)}"
@@ -633,9 +705,9 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
             story.append(psr_table)
             story.append(Spacer(1, 6))
 
-    else:
+    def render_psr_empty_state(message: str) -> None:
         psr_table = Table(
-            [[Paragraph("<b>PSR STATUS</b><br/>No active systemic alerts.", normal_style)]],
+            [[Paragraph(f"<b>PSR STATUS</b><br/>{message}", normal_style)]],
             colWidths=[176 * mm],
         )
         psr_table.setStyle(
@@ -651,6 +723,22 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
             )
         )
         story.append(psr_table)
+
+    story.append(Paragraph("PSR GUARDIAN", section_style))
+
+    if alerts:
+        story.append(
+            Paragraph(
+                f"{len(alerts)} systemic recovery-risk alert"
+                f"{'s' if len(alerts) != 1 else ''} detected in the "
+                f"synthetic 105-case benchmark pipeline result.",
+                normal_style,
+            )
+        )
+        story.append(Spacer(1, 5))
+        render_psr_alert_group(alerts)
+    else:
+        render_psr_empty_state("No active systemic alerts.")
 
     # ========================================================
     # A2A SETTLEMENT
@@ -762,8 +850,15 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
     story.append(Paragraph("CASE REGISTER", section_style))
     story.append(
         Paragraph(
-            f"Complete record of all {len(cases)} case"
-            f"{'s' if len(cases) != 1 else ''} evaluated by the pipeline.",
+            (
+                f"{_xml_escape(filter_note)} Showing the matching cases below."
+                if filter_note
+                else (
+                    f"Complete record of all {len(cases)} case"
+                    f"{'s' if len(cases) != 1 else ''} evaluated by "
+                    f"the pipeline."
+                )
+            ),
             normal_style,
         )
     )
@@ -879,6 +974,288 @@ def build_board_report_pdf(result: dict[str, Any]) -> BytesIO:
         )
     else:
         story.append(Paragraph("No ledger events in this pipeline result.", normal_style))
+
+    # ========================================================
+    # LIVE RAZORPAY TEST MODE
+    #
+    # Everything above this point comes from the synthetic
+    # 105-case benchmark pipeline (`result`). The dashboard also
+    # shows real Razorpay Test Mode activity captured via webhook,
+    # which is intentionally kept isolated from that synthetic
+    # pipeline (see api.py: cases vs live-cases, metrics vs
+    # live_metrics, psr_alerts vs live psr alerts, a2a vs live A2A
+    # settlements). Without this section the PDF only ever shows
+    # the synthetic benchmark, even though the dashboard shows
+    # this real data alongside it.
+    # ========================================================
+
+    story.append(PageBreak())
+    story.append(Paragraph("LIVE RAZORPAY TEST MODE", section_style))
+    story.append(
+        Paragraph(
+            "The sections below reflect real Razorpay Test Mode activity "
+            "captured via webhook and tracked completely separately from "
+            "the synthetic 105-case benchmark above.",
+            normal_style,
+        )
+    )
+    story.append(Spacer(1, 6))
+
+    # --------------------------------------------------------
+    # Live metrics summary
+    # --------------------------------------------------------
+
+    funnel = live_metrics.get("funnel", {})
+    funnel = funnel if isinstance(funnel, dict) else {}
+
+    try:
+        live_recovery_rate_pct = float(live_metrics.get("live_recovery_rate", 0) or 0) * 100
+    except (TypeError, ValueError):
+        live_recovery_rate_pct = 0.0
+
+    live_metrics_data = [
+        ["LIVE CASES", "PENDING RECOVERY", "RECOVERED", "LIVE RECOVERY RATE"],
+        [
+            _safe_text(live_metrics.get("live_cases", len(live_cases))),
+            _safe_text(live_metrics.get("pending_recovery", 0)),
+            _safe_text(live_metrics.get("recovered_cases", 0)),
+            _percent(live_recovery_rate_pct),
+        ],
+        ["TOTAL AMOUNT", "PENDING AMOUNT", "RECOVERED AMOUNT", "RETRY LINKS ISSUED"],
+        [
+            _money(live_metrics.get("total_amount", 0)),
+            _money(live_metrics.get("pending_amount", 0)),
+            _money(live_metrics.get("recovered_amount", 0)),
+            _safe_text(live_metrics.get("retry_links", 0)),
+        ],
+    ]
+
+    live_metrics_table = Table(live_metrics_data, colWidths=[43 * mm] * 4)
+    live_metrics_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F2F4F7")),
+                ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#F2F4F7")),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#344054")),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+                ("FONTNAME", (0, 3), (-1, 3), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#D0D5DD")),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ]
+        )
+    )
+
+    story.append(live_metrics_table)
+    story.append(Spacer(1, 10))
+
+    # --------------------------------------------------------
+    # Live PSR Guardian alerts
+    # --------------------------------------------------------
+
+    story.append(Paragraph("LIVE PSR GUARDIAN ALERTS", section_style))
+
+    if live_psr_alerts:
+        story.append(
+            Paragraph(
+                f"{len(live_psr_alerts)} systemic recovery-risk alert"
+                f"{'s' if len(live_psr_alerts) != 1 else ''} detected in "
+                f"real Razorpay Test Mode webhook-captured failures.",
+                normal_style,
+            )
+        )
+        story.append(Spacer(1, 5))
+        render_psr_alert_group(live_psr_alerts)
+    else:
+        render_psr_empty_state("No active systemic alerts in live Razorpay Test Mode data.")
+
+    story.append(Spacer(1, 4))
+
+    # --------------------------------------------------------
+    # Live A2A settlements
+    # --------------------------------------------------------
+
+    story.append(Paragraph("LIVE A2A SETTLEMENTS", section_style))
+
+    if live_a2a_settlements:
+        story.append(
+            Paragraph(
+                f"{len(live_a2a_settlements)} live settlement agreement"
+                f"{'s' if len(live_a2a_settlements) != 1 else ''}:",
+                normal_style,
+            )
+        )
+        story.append(Spacer(1, 4))
+
+        live_a2a_rows = []
+        for item in live_a2a_settlements:
+            if not isinstance(item, dict):
+                continue
+
+            live_a2a_rows.append(
+                [
+                    cell(_first_value(item, ["agreement_id"], "\u2014")),
+                    cell(_first_value(item, ["case_id"], "\u2014")),
+                    cell(_first_value(item, ["invoice_id"], "\u2014")),
+                    cell(
+                        _money(item.get("agreed_amount"))
+                        if item.get("agreed_amount") is not None
+                        else "\u2014"
+                    ),
+                    cell(_first_value(item, ["settlement_status"], "\u2014"), bold=True),
+                    cell(_first_value(item, ["payment_status"], "\u2014")),
+                ]
+            )
+
+        story.append(
+            detail_table(
+                header=[
+                    "Agreement ID", "Case ID", "Invoice ID",
+                    "Agreed Amount", "Settlement Status", "Payment Status",
+                ],
+                rows=live_a2a_rows,
+                col_widths=[
+                    32 * mm, 24 * mm, 24 * mm, 26 * mm, 32 * mm, 32 * mm,
+                ],
+            )
+        )
+    else:
+        story.append(
+            Paragraph("No live A2A settlement agreements yet.", normal_style)
+        )
+
+    story.append(Spacer(1, 4))
+
+    # --------------------------------------------------------
+    # Live case register — every webhook-captured case
+    # --------------------------------------------------------
+
+    story.append(PageBreak())
+    story.append(Paragraph("LIVE CASE REGISTER", section_style))
+    story.append(
+        Paragraph(
+            f"Complete record of all {len(live_cases)} real Razorpay "
+            f"Test Mode case{'s' if len(live_cases) != 1 else ''} "
+            f"captured via webhook.",
+            normal_style,
+        )
+    )
+    story.append(Spacer(1, 4))
+
+    if live_cases:
+        live_case_rows = []
+        for case in live_cases:
+            if not isinstance(case, dict):
+                continue
+
+            case_id = case.get("case_id", "\u2014")
+            customer = _first_value(
+                case, ["customer_name", "customer_id"], "\u2014",
+            )
+            amount = case.get("amount")
+            root_cause = _first_value(
+                case, ["decline_code", "root_cause"], "\u2014",
+            )
+            status = case.get("recovery_status", "\u2014")
+            recovered_amount = case.get("recovered_amount")
+            retry_count = case.get("retry_count", 0)
+
+            live_case_rows.append(
+                [
+                    cell(case_id),
+                    cell(customer),
+                    cell(_money(amount) if amount is not None else "\u2014"),
+                    cell(root_cause),
+                    cell(status, bold=True),
+                    cell(
+                        _money(recovered_amount)
+                        if recovered_amount not in (None, 0)
+                        else "\u2014"
+                    ),
+                    cell(retry_count),
+                ]
+            )
+
+        story.append(
+            detail_table(
+                header=[
+                    "Case ID", "Customer", "Amount", "Decline Code",
+                    "Recovery Status", "Recovered", "Retries",
+                ],
+                rows=live_case_rows,
+                col_widths=[
+                    26 * mm, 26 * mm, 20 * mm, 26 * mm,
+                    28 * mm, 26 * mm, 14 * mm,
+                ],
+            )
+        )
+    else:
+        story.append(
+            Paragraph("No live Razorpay Test Mode cases captured yet.", normal_style)
+        )
+
+    # --------------------------------------------------------
+    # Real Razorpay sandbox capture (single verified case)
+    # --------------------------------------------------------
+
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("REAL RAZORPAY SANDBOX CAPTURE", section_style))
+
+    if real_capture_case:
+        capture_customer = _first_value(
+            real_capture_case, ["customer_name", "customer_id"], _EM_DASH,
+        )
+        capture_amount = (
+            _money(real_capture_case.get("amount"))
+            if real_capture_case.get("amount") is not None
+            else _EM_DASH
+        )
+        capture_status = real_capture_case.get("recovery_status", _EM_DASH)
+
+        capture_rows = [
+            [Paragraph(
+                "<b>This is a single, manually verified Razorpay sandbox "
+                "capture.</b> It is tracked separately from both the "
+                "synthetic benchmark and the webhook-captured live cases "
+                "above.",
+                normal_style,
+            )],
+            [Paragraph(
+                f"<b>Case ID:</b> {_xml_escape(_safe_text(real_capture_case.get('case_id')))} "
+                f"&nbsp;&nbsp; <b>Customer:</b> "
+                f"{_xml_escape(_safe_text(capture_customer))}",
+                normal_style,
+            )],
+            [Paragraph(
+                f"<b>Amount:</b> "
+                f"{_xml_escape(_safe_text(capture_amount))} "
+                f"&nbsp;&nbsp; <b>Status:</b> "
+                f"{_xml_escape(_safe_text(capture_status))}",
+                normal_style,
+            )],
+        ]
+
+        capture_table = Table(capture_rows, colWidths=[176 * mm])
+        capture_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                    ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#D0D5DD")),
+                    ("LINEBELOW", (0, 0), (-1, -2), 0.4, colors.HexColor("#E4E7EC")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 11),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 11),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        story.append(capture_table)
+    else:
+        story.append(
+            Paragraph("No real Razorpay sandbox capture on file.", normal_style)
+        )
 
     # ========================================================
     # FOOTER
