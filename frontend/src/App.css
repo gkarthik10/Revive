@@ -3963,6 +3963,13 @@ tbody td .badge + small.decision-reason {
   margin-bottom: 24px;
 }
 
+.modal-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
 .modal-header h2 {
   margin: 6px 0 0;
   font-size: 26px;
