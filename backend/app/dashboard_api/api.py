@@ -4958,21 +4958,159 @@ def simulate_policy(
 # EXPORT BOARD REPORT
 # ============================================================
 
+def _filter_cases_for_export(
+    cases: list[dict[str, Any]],
+    search: str | None,
+    decision: str | None,
+    outcome: str | None,
+) -> list[dict[str, Any]]:
+    """
+    Mirror App.jsx's `filteredCases` memo exactly, so a filtered
+    board-report export matches what the person was actually
+    looking at on the dashboard when they clicked export.
+    """
+
+    query = (search or "").strip().lower()
+    decision_filter = (decision or "ALL").strip().upper() or "ALL"
+    outcome_filter = (outcome or "ALL").strip().upper() or "ALL"
+
+    def matches(case: dict[str, Any]) -> bool:
+        if not isinstance(case, dict):
+            return False
+
+        if query:
+            haystacks = [
+                str(case.get("case_id", "")),
+                str(case.get("customer_id", "")),
+                str(case.get("root_cause", "")),
+                str(case.get("action", "")),
+                str(case.get("channel", "")),
+                str(case.get("surface", "")),
+            ]
+            if not any(query in text.lower() for text in haystacks):
+                return False
+
+        if decision_filter != "ALL":
+            if str(case.get("roi_decision", "")).upper() != decision_filter:
+                return False
+
+        if outcome_filter != "ALL":
+            if str(case.get("outcome", "")).upper() != outcome_filter:
+                return False
+
+        return True
+
+    return [case for case in cases if matches(case)]
+
+
 @app.get("/api/board-report")
-def board_report():
+def board_report(
+    search: str | None = None,
+    decision: str | None = None,
+    outcome: str | None = None,
+):
     """
     Generate and return the executive Revive Board Report PDF.
 
     The report is generated from the current authoritative
-    pipeline result.
+    pipeline result, PLUS everything the dashboard shows that is
+    intentionally kept out of that synthetic pipeline result: real
+    Razorpay Test Mode cases (live_case_store), live metrics, live
+    PSR Guardian alerts, live A2A settlements, and the real Razorpay
+    sandbox capture. Previously this endpoint only passed the
+    synthetic pipeline result, so "Export snapshot" silently
+    dropped all of that live data from the PDF even though it is
+    visible on the dashboard.
+
+    `search` / `decision` / `outcome` mirror the dashboard's own
+    case-table filters (App.jsx's `filteredCases`). When the person
+    exports with an active filter, the dashboard's toast claims "N
+    filtered cases exported" -- previously that was false, since
+    this endpoint ignored these params entirely and always exported
+    every case. Passing them narrows the Case Register, and the
+    Recovery Ledger / A2A Settlement Register rows to the matching
+    case_ids, so the PDF actually reflects the filtered view the
+    person was looking at. Executive summary metrics and PSR
+    Guardian alerts are portfolio-level figures (the dashboard's own
+    summary cards don't change when the case table is filtered
+    either), so they intentionally stay unfiltered.
     """
 
     try:
 
         result = get_pipeline()
 
+        filters_active = bool(
+            (search and search.strip())
+            or (decision and decision.strip().upper() != "ALL")
+            or (outcome and outcome.strip().upper() != "ALL")
+        )
+
+        filter_note = None
+
+        if filters_active:
+            all_cases = _cases(result)
+
+            filtered_cases = _filter_cases_for_export(
+                all_cases, search, decision, outcome
+            )
+
+            filtered_case_ids = {
+                case.get("case_id")
+                for case in filtered_cases
+                if isinstance(case, dict)
+            }
+
+            result = {
+                **result,
+                "cases": filtered_cases,
+                "ledger": [
+                    event
+                    for event in _ledger(result)
+                    if isinstance(event, dict)
+                    and event.get("case_id") in filtered_case_ids
+                ],
+                "a2a_settlements": [
+                    item
+                    for item in _a2a_results(result)
+                    if isinstance(item, dict)
+                    and item.get("case_id") in filtered_case_ids
+                ],
+            }
+
+            filter_parts = []
+            if search and search.strip():
+                filter_parts.append(f'search "{search.strip()}"')
+            if decision and decision.strip().upper() != "ALL":
+                filter_parts.append(f"decision = {decision.strip().upper()}")
+            if outcome and outcome.strip().upper() != "ALL":
+                filter_parts.append(f"outcome = {outcome.strip().upper()}")
+
+            filter_note = (
+                f"Filtered export \u2014 {len(filtered_cases)} of "
+                f"{len(all_cases)} cases match "
+                f"{', '.join(filter_parts)}. Case Register, Recovery "
+                f"Ledger and A2A Settlement Register below are scoped "
+                f"to these cases; executive summary metrics and PSR "
+                f"Guardian alerts remain portfolio-wide."
+            )
+
+        live_cases_data = live_case_store.load()
+
+        live_data = {
+            "live_cases": live_cases_data,
+            "live_metrics": build_live_metrics(live_cases_data),
+            "live_psr_alerts": [
+                asdict(alert) for alert in detect_alerts(live_cases_data)
+            ],
+            "live_a2a_settlements": live_a2a_settlement_store.list_all(),
+            "real_capture_case": real_capture().get("case"),
+        }
+
         pdf_buffer = build_board_report_pdf(
-            result
+            result,
+            live_data,
+            filter_note=filter_note,
         )
 
         filename = "Revive_Board_Report.pdf"
