@@ -131,7 +131,7 @@ bootstrap your own admin instead of the seeded one:
 1. Before first run, empty the seed file on the host (it's bind-mounted, so
    editing it only inside a running container won't stick):
    ```bash
-   echo "[]" > backend/app/data/users.json
+   Set-Content -Path .\users.json -Value "[]" -Encoding utf8
    ```
 2. Start the stack: `docker compose up --build`
 3. Call the bootstrap endpoint **once** — it only works while `users.json`
