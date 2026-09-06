@@ -4992,26 +4992,28 @@ function App() {
                 <div className="simulator-field">
                   <label>SURFACE</label>
 
-                  <select
+                  <Dropdown
                     value={checkoutForm.surface}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       setCheckoutForm((prev) => ({
                         ...prev,
-                        surface: event.target.value,
+                        surface: value,
                         // Clear B2B-only fields when switching away so a
                         // stale invoice_id/has_ap_agent can't leak into an
                         // unrelated surface.
-                        ...(event.target.value !== "b2b_receivable"
+                        ...(value !== "b2b_receivable"
                           ? { invoice_id: "", has_ap_agent: false, disputed: false }
                           : {}),
                       }))
                     }
-                  >
-                    <option value="subscription_failure">
-                      Subscription failure
-                    </option>
-                    <option value="b2b_receivable">B2B receivable</option>
-                  </select>
+                    options={[
+                      {
+                        value: "subscription_failure",
+                        label: "Subscription failure",
+                      },
+                      { value: "b2b_receivable", label: "B2B receivable" },
+                    ]}
+                  />
 
                   <small>
                     Only "B2B receivable" cases are eligible for Live A2A
