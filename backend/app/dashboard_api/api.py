@@ -109,6 +109,16 @@ from app.pipeline import (
     pipeline_to_dict,
 )
 
+# PSR Guardian's detection engine (see app/psr_guardian/guardian.py)
+# is data-source agnostic -- it only ever reads operationally
+# observable fields (bank, card_network, decline_code, timestamp).
+# Imported directly here (rather than only via app.pipeline) so it
+# can also be run over REAL Razorpay webhook-captured failures
+# (live_case_store), not just the synthetic cases.json benchmark.
+from app.psr_guardian.guardian import (
+    detect_alerts,
+)
+
 from app.core.policy import load_policy
 
 from app.decision_explainer import (
@@ -2106,6 +2116,34 @@ def live_cases() -> dict[str, Any]:
     }
 
 
+@app.get("/api/psr-guardian/live-alerts")
+def psr_guardian_live_alerts() -> dict[str, Any]:
+    """
+    Systemic payment-route risk alerts computed over REAL Razorpay
+    webhook-captured failures (live_case_store), using the exact
+    same detection engine as the synthetic pipeline (see
+    app.psr_guardian.guardian.detect_alerts) -- group by
+    bank/card_network/decline_code, then check for abnormal
+    temporal concentration. No synthetic data is involved.
+
+    Intentionally isolated from the synthetic 105-case benchmark's
+    psr_alerts, consistent with metrics vs live_metrics and
+    cases vs live-cases elsewhere in this API.
+    """
+
+    live_cases_data = live_case_store.load()
+
+    alerts = detect_alerts(live_cases_data)
+
+    return {
+        "success": True,
+        "count": len(alerts),
+        "live_alerts": [
+            asdict(alert) for alert in alerts
+        ],
+    }
+
+
 @app.delete("/api/payments/live-cases")
 def reset_live_cases() -> dict[str, Any]:
     """
@@ -2168,8 +2206,10 @@ def get_customer(customer_id: str) -> dict[str, Any]:
 def notifications() -> dict[str, Any]:
     """
     Operator-facing notifications derived from the current
-    authoritative pipeline result: PSR Guardian alerts, completed
-    A2A settlements, high-value cases that were not recovered, and
+    authoritative pipeline result: PSR Guardian alerts (both the
+    synthetic benchmark and, separately, real Razorpay Test Mode
+    failures -- see /api/psr-guardian/live-alerts), completed A2A
+    settlements, high-value cases that were not recovered, and
     any live Razorpay payment failures captured via webhook.
 
     Read-only — does not modify cases, policy, ROI, A2A, or ledger
@@ -2178,11 +2218,17 @@ def notifications() -> dict[str, Any]:
 
     result = get_pipeline()
 
+    live_cases_data = live_case_store.load()
+
     items = generate_notifications(
         cases=_cases(result),
         psr_alerts=_psr_alerts(result),
         a2a_settlements=_a2a_results(result),
-        live_cases=live_case_store.load(),
+        live_cases=live_cases_data,
+        live_psr_alerts=[
+            asdict(alert)
+            for alert in detect_alerts(live_cases_data)
+        ],
     )
 
     payload = [item.to_dict() for item in items]
@@ -4998,6 +5044,10 @@ def _tool_psr_alerts(_: dict[str, Any]) -> dict[str, Any]:
     return psr_alerts()
 
 
+def _tool_live_psr_alerts(_: dict[str, Any]) -> dict[str, Any]:
+    return psr_guardian_live_alerts()
+
+
 def _tool_ledger(tool_input: dict[str, Any]) -> dict[str, Any]:
     case_id = tool_input.get("case_id")
     if case_id:
@@ -5115,9 +5165,17 @@ COPILOT_TOOLS: list[ToolSpec] = [
     ),
     ToolSpec(
         name="get_psr_alerts",
-        description="List current PSR Guardian (payment success rate) alerts.",
+        description="List current PSR Guardian (payment success rate) alerts from the "
+        "synthetic benchmark dataset.",
         input_schema={"type": "object", "properties": {}},
         handler=_tool_psr_alerts,
+    ),
+    ToolSpec(
+        name="get_live_psr_alerts",
+        description="List current PSR Guardian alerts computed over REAL Razorpay "
+        "webhook-captured payment failures (not the synthetic benchmark).",
+        input_schema={"type": "object", "properties": {}},
+        handler=_tool_live_psr_alerts,
     ),
     ToolSpec(
         name="get_ledger",
